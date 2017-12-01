@@ -1,0 +1,57 @@
+#ifndef GPU_H
+#define GPU_H
+
+#include <jagcore.h>
+
+#include "shared.h"
+#include "fixed.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+
+void GPU_LOAD_LINEDRAW_PROGRAM();
+void GPU_LOAD_MMULT_PROGRAM();
+void GPU_START(uint8_t *function);
+void GPU_MMULT_START();
+
+extern char skunkoutput[128];
+
+extern uint8_t blit_triangle[];
+extern uint8_t blit_triangle_end[];
+
+extern uint16_t Line_X1;
+extern uint16_t Line_X2;
+extern uint16_t Line_Y1;
+extern uint16_t Line_Y2;
+extern uint32_t line_x1_value;
+extern uint32_t line_x2_value;
+extern uint32_t line_y1_value;
+extern uint32_t line_y2_value;
+extern uint32_t line_clut_color;
+void gpu_blit_triangle(Vector3FX *vertexes, uint32_t color);
+
+extern uint8_t gpu_matrix_multiply_program_start[];
+extern uint8_t gpu_matrix_multiply_program_end[];
+
+extern const uint8_t gpu_matrix_multiply[];
+extern const uint8_t gpu_matrix_multiply_end[];
+
+typedef struct matrix44_t Matrix44;
+extern Matrix44 gpu_matrix_operand_1;
+extern Matrix44 gpu_matrix_operand_2;
+extern Matrix44 gpu_matrix_result;
+
+extern Vector3FX *ptr_vertex_array;
+
+//Precalculation.
+void GPU_PRECALCULATE_START();
+
+extern const uint8_t gpu_precalculate_transformation[];
+extern const uint8_t gpu_precalculate_transformation_end[];
+
+extern Matrix44 *gpu_ptr_translation_matrix;
+extern Matrix44 *gpu_ptr_rotation_matrix;
+extern Matrix44 *gpu_ptr_camera_matrix;
+extern Matrix44 *gpu_ptr_transformation_matrix;
+
+#endif

@@ -1,0 +1,450 @@
+/* Note: All malloc() objects or anything on the heap is phrase-aligned.
+   Objects on the stack are word-aligned. */
+
+#include "main.h"
+#include <stdbool.h>
+
+#include "cube.h"
+
+Vector3FX cameraTranslation;
+
+typedef struct shape_t {
+  Vector3FX translation, rotation, scale;
+  Vector3FX *triangles[16];
+} Shape;
+
+extern uint32_t gpu_register_dump[32];
+
+char skunkoutput[256];
+
+bool GPU_loaded = false;
+
+op_stop_object *make_stopobj() {	
+  op_stop_object *stopobj = calloc(1,sizeof(op_stop_object));
+  stopobj->type = STOPOBJ;
+  stopobj->int_flag = 1;
+  return stopobj;
+}
+op_stop_object *stopobj;
+
+void OP_ResetObjects()
+{
+  //The height field needs to be reset each frame for each mobj. Thanks Atari.
+  mobj_background.graphic->p0.height = 200;
+  mobj_sprites.graphic->p0.height = 200;
+  mobj_font.graphic->p0.height = 200;
+
+  mobj_background.graphic->p0.data = (uint32_t)front_buffer >> 3;
+  mobj_sprites.graphic->p0.data = (uint32_t)sprite_buffer >> 3;
+  mobj_font.graphic->p0.data = (uint32_t)text_buffer >> 3;
+}
+
+uint16_t jag_custom_interrupt_handler()
+{
+  if (*INT1&C_VIDENA)
+    {      
+      MMIO16(INT2) = 0;
+	  OP_ResetObjects();
+      return C_VIDCLR;
+    }
+  return 0;
+}
+
+void clear_video_buffer(uint8_t *buffer){
+  BLIT_rectangle_solid(buffer, 0, 0, 320, 200, 0);
+}
+
+int main() {
+  //set correct endianness
+  MMIO32(G_END) = 0x00070007;
+  
+  cameraTranslation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+  
+  srand(8675309);
+  jag_console_hide();
+  
+  //BLIT_init_blitter();
+  BLITTER_LOCK_CPU = false;
+  BLITTER_LOCK_GPU = false;
+  
+  skunkCONSOLEWRITE("Connected to PC.\n");
+  
+  GPU_loaded = true;
+  
+  front_buffer = background_frame_0;
+  back_buffer = background_frame_1;
+
+  //Text layer color
+  jag_set_indexed_color(254, toRgb16(0,0,0));
+  jag_set_indexed_color(255, toRgb16(200, 200, 200));
+
+  BLIT_8x8_text_string(text_buffer, 32, 16, "                   ");
+
+  stopobj = make_stopobj();
+
+  mobj_background.graphic = calloc(1,sizeof(op_bmp_object));
+
+  /* Font bitmap thingy */
+  {
+    mobj_font.graphic = calloc(1,sizeof(op_bmp_object));
+    mobj_font.objType = BITOBJ;
+    mobj_font.position.x = 19;
+    mobj_font.position.y = 80;
+    mobj_font.pxWidth = 320;
+    mobj_font.pxHeight = 200;
+    
+    mobj_font.animations = NULL;
+    
+    mobj_font.graphic->p0.type	= mobj_font.objType;	       	/* BITOBJ = bitmap object */
+    mobj_font.graphic->p0.ypos	= mobj_font.position.y;         /* YPOS = Y position on screen "in half-lines" */
+    mobj_font.graphic->p0.height = mobj_font.pxHeight;	        /* in pixels */
+    mobj_font.graphic->p0.link	= (uint32_t)stopobj >> 3;	/* link to next object */
+    mobj_font.graphic->p0.data	= (uint32_t)text_buffer >> 3;	/* ptr to pixel data */
+    mobj_font.graphic->p1.xpos	= mobj_font.position.x;         /* X position on screen, -2048 to 2047 */
+    mobj_font.graphic->p1.depth	= O_DEPTH1 >> 12;		/* pixel depth of object */
+    mobj_font.graphic->p1.pitch	= 1;				/* 8 * PITCH is added to each fetch */
+    mobj_font.graphic->p1.dwidth= mobj_font.pxWidth / 64;	/* pixel data width in 8-byte phrases */
+    mobj_font.graphic->p1.iwidth= mobj_font.pxWidth / 64;	/* image width in 8-byte phrases, for clipping */	
+    mobj_font.graphic->p1.release= 0;				/* bus mastering, set to 1 when low-depth */
+    mobj_font.graphic->p1.trans  = 1;				/* makes color 0 transparent */
+    mobj_font.graphic->p1.index  = 127;
+  }
+
+  skunkCONSOLEWRITE("font layer initialized\n");
+
+  /* Sprite layer */
+  {
+    mobj_sprites.graphic = calloc(1,sizeof(op_bmp_object));
+    mobj_sprites.objType = BITOBJ;
+    mobj_sprites.position.x = 19;
+    mobj_sprites.position.y = 80;
+    mobj_sprites.pxWidth = 320;
+    mobj_sprites.pxHeight = 200;
+    
+    mobj_sprites.animations = NULL;
+    
+    mobj_sprites.graphic->p0.type	= mobj_sprites.objType;	       	/* BITOBJ = bitmap object */
+    mobj_sprites.graphic->p0.ypos	= mobj_sprites.position.y;      /* YPOS = Y position on screen "in half-lines" */
+    mobj_sprites.graphic->p0.height     = mobj_sprites.pxHeight;	        /* in pixels */
+    mobj_sprites.graphic->p0.link	= (uint32_t)mobj_font.graphic >> 3;	/* link to next object */
+    mobj_sprites.graphic->p0.data	= (uint32_t)sprite_buffer >> 3;	/* ptr to pixel data */
+    mobj_sprites.graphic->p1.xpos	= mobj_sprites.position.x;      /* X position on screen, -2048 to 2047 */
+    mobj_sprites.graphic->p1.depth	= O_DEPTH8 >> 12;		/* pixel depth of object */
+    mobj_sprites.graphic->p1.pitch	= 1;				/* 8 * PITCH is added to each fetch */
+    mobj_sprites.graphic->p1.dwidth     = mobj_sprites.pxWidth / 8;	/* pixel data width in 8-byte phrases */
+    mobj_sprites.graphic->p1.iwidth     = mobj_sprites.pxWidth / 8;	/* image width in 8-byte phrases, for clipping */	
+    mobj_sprites.graphic->p1.release= 0;				/* bus mastering, set to 1 when low-depth */
+    mobj_sprites.graphic->p1.trans  = 1;				/* makes color 0 transparent */
+    mobj_sprites.graphic->p1.index  = 0;
+  }
+
+   /* Background */
+  {
+    mobj_background.objType = BITOBJ;
+    mobj_background.position.x = 19;
+    mobj_background.position.y = 80;
+    mobj_background.pxWidth = 320;
+    mobj_background.pxHeight = 200;
+    
+    mobj_background.graphic->p0.type	= mobj_background.objType;	/* BITOBJ = bitmap object */
+    mobj_background.graphic->p0.ypos	= mobj_background.position.y;   /* YPOS = Y position on screen "in half-lines" */
+    mobj_background.graphic->p0.height  = mobj_background.pxHeight;	/* in pixels */
+    mobj_background.graphic->p0.link	= (uint32_t)mobj_sprites.graphic >> 3;	/* link to next object */
+    mobj_background.graphic->p0.data	= (uint32_t)front_buffer >> 3;	/* ptr to pixel data */
+    
+    mobj_background.graphic->p1.xpos	= mobj_background.position.x;      /* X position on screen, -2048 to 2047 */
+    mobj_background.graphic->p1.depth	= O_DEPTH8 >> 12;		/* pixel depth of object */
+    mobj_background.graphic->p1.pitch	= 1;				/* 8 * PITCH is added to each fetch */
+    mobj_background.graphic->p1.dwidth  = mobj_background.pxWidth / 8;	/* pixel data width in 8-byte phrases */
+    mobj_background.graphic->p1.iwidth  = mobj_background.pxWidth / 8;	/* image width in 8-byte phrases, for clipping */	
+    mobj_background.graphic->p1.release= 0;				/* bus mastering, set to 1 when low-depth */
+    mobj_background.graphic->p1.trans  = 1;				/* makes color 0 transparent */
+    mobj_background.graphic->p1.index  = 0;
+  }
+
+  skunkCONSOLEWRITE("background layer initialized\n");
+  
+  //Start the list here.
+  jag_attach_olp(mobj_background.graphic);
+
+  skunkCONSOLEWRITE("object list attached\n");
+		
+  uint32_t stick0, stick0_lastread;
+  uint16_t framecounter = 0;
+  uint32_t framenumber = 0;
+  
+  Shape cube;
+  cube.translation = (Vector3FX){ .x = INT_TO_FIXED(160), .y = INT_TO_FIXED(100), .z = INT_TO_FIXED(0) };
+  cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+  cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+  
+  cube.triangles[0] = triangle1;
+  cube.triangles[1] = triangle2;
+  cube.triangles[2] = triangle3;
+  cube.triangles[3] = triangle4;
+  cube.triangles[4] = triangle5;
+  cube.triangles[5] = triangle6;
+  cube.triangles[6] = triangle7;
+  cube.triangles[7] = triangle8;
+  cube.triangles[8] = triangle9;
+  cube.triangles[9] = triangle10;
+  cube.triangles[10] = triangle11;
+  cube.triangles[11] = triangle12;
+  
+  sprintf(skunkoutput, "gpu_matrix_multiply_program_start = %p\n", gpu_matrix_multiply_program_start);
+  skunkCONSOLEWRITE(skunkoutput);
+  sprintf(skunkoutput, "gpu_matrix_multiply_program_end = %p\n", gpu_matrix_multiply_program_end);
+  skunkCONSOLEWRITE(skunkoutput);
+  sprintf(skunkoutput, "gpu_matrix_multiply = %p\n", gpu_matrix_multiply);
+  skunkCONSOLEWRITE(skunkoutput);
+  
+  DSP_LOAD_MATRIX_PROGRAM();
+  skunkCONSOLEWRITE("DSP program uploaded.\n");
+  //GPU_LOAD_MMULT_PROGRAM();
+  //skunkCONSOLEWRITE("GPU program uploaded.\n");
+  
+  Matrix44 *m, *translation, *mRotation, *mCamera, *mPerspective;
+  
+  Vector3FX transformedVertexList[4];
+
+  m = calloc(1, sizeof(Matrix44));
+  translation = calloc(1, sizeof(Matrix44));
+  mCamera = calloc(1, sizeof(Matrix44));
+  mRotation = calloc(1, sizeof(Matrix44));
+
+  /* Multiplication test */
+  /*
+  Matrix44 *m1 = calloc(1, sizeof(Matrix44));
+  Matrix44 *m2 = calloc(1, sizeof(Matrix44));
+
+  Matrix44_Identity(m1);
+  Matrix44_Identity(m2);
+
+  m1->data[0][0] = 0x00010000;
+  m2->data[0][0] = 0x00010000;
+  
+  m1->data[0][1] = 0x00020000;
+  m2->data[0][1] = 0x00020000;
+  
+  m1->data[0][2] = 0x00030000;
+  m2->data[0][2] = 0x00030000;
+
+  m1->data[0][3] = 0x00040000;
+  m2->data[0][3] = 0x00040000;  
+  
+  m1->data[1][0] = 0x00010000;
+  m2->data[1][0] = 0x00010000;
+  
+  m1->data[1][1] = 0x00020000;
+  m2->data[1][1] = 0x00020000;
+  
+  m1->data[1][2] = 0x00030000;
+  m2->data[1][2] = 0x00030000;
+
+  m1->data[1][3] = 0x00040000;
+  m2->data[1][3] = 0x00040000;
+  
+  m1->data[2][0] = 0x00010000;
+  m2->data[2][0] = 0x00010000;
+  
+  m1->data[2][1] = 0x00020000;
+  m2->data[2][1] = 0x00020000;
+  
+  m1->data[2][2] = 0x00030000;
+  m2->data[2][2] = 0x00030000;
+
+  m1->data[2][3] = 0x00040000;
+  m2->data[2][3] = 0x00040000;  
+  
+  m1->data[3][0] = 0x00010000;
+  m2->data[3][0] = 0x00010000;
+  
+  m1->data[3][1] = 0x00020000;
+  m2->data[3][1] = 0x00020000;
+  
+  m1->data[3][2] = 0x00030000;
+  m2->data[3][2] = 0x00030000;
+
+  m1->data[3][3] = 0x00040000;
+  m2->data[3][3] = 0x00040000;  
+  
+  sprintf(skunkoutput, "m1 = $%08X\nm2 = $%08X\ngpu_matrix_operand_1 = $%08X\ngpu_matrix_operand_2 = $%08X\ngpu_matrix_result = $%08X\n", m1, m2, &gpu_matrix_operand_1, &gpu_matrix_operand_2, &gpu_matrix_result);
+  skunkCONSOLEWRITE(skunkoutput);
+
+  memcpy(&gpu_matrix_operand_1, m1, sizeof(Matrix44));
+  memcpy(&gpu_matrix_operand_2, m2, sizeof(Matrix44));
+
+  GPU_MMULT_START();
+  jag_gpu_wait();
+  
+  sprintf(skunkoutput, "*** GPU MULTIPLIED MATRIX ***\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n",
+	gpu_matrix_result.data[0][0], gpu_matrix_result.data[0][1], gpu_matrix_result.data[0][2], gpu_matrix_result.data[0][3], 
+	gpu_matrix_result.data[1][0], gpu_matrix_result.data[1][1], gpu_matrix_result.data[1][2], gpu_matrix_result.data[1][3], 
+	gpu_matrix_result.data[2][0], gpu_matrix_result.data[2][1], gpu_matrix_result.data[2][2], gpu_matrix_result.data[2][3], 
+	gpu_matrix_result.data[3][0], gpu_matrix_result.data[3][1], gpu_matrix_result.data[3][2], gpu_matrix_result.data[3][3] 
+	);
+  skunkCONSOLEWRITE(skunkoutput);
+  
+  while(true) {};
+  */
+
+  mPerspective = calloc(1, sizeof(Matrix44));
+  Matrix44_Identity(mPerspective);
+  //S = 1/(tan(fov/2) * (pi/180))
+  //S = 1/(tan(90/2) * 0.017)
+  //S = 1/(45 radians)
+  //S = 1/0.785398
+  //S = 1.2732398...
+  
+  FIXED_32 NEAR_CLIP 	= 0x000A0000;
+  FIXED_32 FAR_CLIP 	= 0x00640000;
+  FIXED_32 DENOMINATOR	= FAR_CLIP - NEAR_CLIP;
+
+  jag_dsp_wait();  
+  mPerspective->data[0][0] = 0x000145F6; //~1.2732398
+  mPerspective->data[1][1] = 0x000145F6; //~1.2732398
+  mPerspective->data[2][3] = -1;
+  mPerspective->data[3][3] = 0;
+  mPerspective->data[2][2] = -FIXED_DIV(FAR_CLIP, DENOMINATOR);
+  mPerspective->data[2][3] = -FIXED_DIV(FIXED_MUL(FAR_CLIP, NEAR_CLIP), DENOMINATOR);
+  
+  Matrix44_Identity(mCamera);
+  
+  skunkCONSOLEWRITE("Entering main loop.\n");
+  
+  while(true) {
+    
+    if(front_buffer == background_frame_0)
+      {
+	      front_buffer = background_frame_1;
+	      back_buffer  = background_frame_0;
+      }
+    else
+      {
+	      front_buffer = background_frame_0;
+	      back_buffer  = background_frame_1;
+      }
+
+    jag_wait_vbl();
+    
+    clear_video_buffer(back_buffer);
+
+    /* Buffer is now clear. */
+    
+    framecounter = (framecounter + 1) % 60;
+    framenumber++;
+
+    if((framecounter % 60) == 0)
+      {
+	
+      }
+    
+    /* Triggers once per frame while these are pressed */
+    if(stick0_lastread & STICK_UP) {
+
+    }
+    if(stick0_lastread & STICK_DOWN) {
+
+    }
+    if(stick0_lastread & STICK_LEFT) {
+
+    }
+    if(stick0_lastread & STICK_RIGHT) {
+      
+    }
+ 
+    stick0 = jag_read_stick0(STICK_READ_ALL);
+    /* Debounced - only triggers once per press */
+    switch(stick0 ^ stick0_lastread)
+      {
+      case STICK_UP:
+	    //if(~stick0_lastread & STICK_UP) printf("Up\n");
+	    break;
+      case STICK_DOWN:
+	    //if(~stick0_lastread & STICK_DOWN) printf("Down\n");
+	    break;
+      case STICK_LEFT:
+	      if(~stick0_lastread & STICK_LEFT)
+        {
+        cameraTranslation.x = FIXED_SUB(cameraTranslation.x, INT_TO_FIXED(10));
+        }
+      break;
+      case STICK_RIGHT:
+      if(~stick0_lastread & STICK_RIGHT)
+        {
+        cameraTranslation.x = FIXED_ADD(cameraTranslation.x, INT_TO_FIXED(10));
+        }
+      break;
+      case STICK_A:
+      //if(~stick0_lastread & STICK_A) printf("A\n");
+      if(~stick0_lastread & STICK_A)
+        {
+          
+        }
+      break;
+      case STICK_B:
+      //if(~stick0_lastread & STICK_B) printf("B\n");
+      break;
+      case STICK_C:
+      //if(~stick0_lastread & STICK_C) printf("C\n");
+      break;
+      }
+	  
+    stick0_lastread = stick0;
+	
+	/* 3D! */
+	GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
+	
+	cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
+	cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+	cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+	Matrix44_Rotation(cube.rotation, mRotation);
+	jag_dsp_wait();
+	
+	Matrix44_Translation(cube.translation, translation);
+	jag_dsp_wait();
+	Matrix44_Identity(m);
+	jag_dsp_wait();
+	
+	//TODO: Combine these steps into one GPU operation
+	Matrix44_Multiply_Matrix44(m, translation, m);
+	Matrix44_Multiply_Matrix44(m, mRotation, m);
+	
+	Matrix44_Multiply_Matrix44(m, mCamera, m);
+  
+	GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
+	for(int triNum=0; triNum<12; triNum++){		
+		for(int i=0;i<4;i++){
+		  Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &transformedVertexList[i]);
+		}
+		
+		jag_wait_blitter_ready();
+		jag_dsp_wait();
+		
+		gpu_blit_triangle(transformedVertexList, 255);
+		
+		jag_gpu_wait();
+	}
+	
+    //skunkCONSOLEWRITE("Frame\n");
+
+	/*
+    sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R04 %08X R05 %08X R06 %08X R07 %08X\n", gpu_register_dump[4], gpu_register_dump[5], gpu_register_dump[6], gpu_register_dump[7]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R08 %08X R09 %08X R10 %08X R11 %08X\n", gpu_register_dump[8], gpu_register_dump[9], gpu_register_dump[10], gpu_register_dump[11]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R12 %08X R13 %08X R14 %08X R15 %08X\n", gpu_register_dump[12], gpu_register_dump[13], gpu_register_dump[14], gpu_register_dump[15]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R16 %08X R17 %08X R18 %08X R19 %08X\n", gpu_register_dump[16], gpu_register_dump[17], gpu_register_dump[18], gpu_register_dump[19]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R20 %08X R21 %08X R22 %08X R23 %08X\n", gpu_register_dump[20], gpu_register_dump[21], gpu_register_dump[22], gpu_register_dump[23]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R24 %08X R25 %08X R26 %08X R28 %08X\n", gpu_register_dump[24], gpu_register_dump[25], gpu_register_dump[26], gpu_register_dump[27]);
+    skunkCONSOLEWRITE(skunkoutput);
+    sprintf(skunkoutput, "R28 %08X R29 %08X R30 %08X R31 %08X\n", gpu_register_dump[28], gpu_register_dump[29], gpu_register_dump[30], gpu_register_dump[31]);
+    skunkCONSOLEWRITE(skunkoutput);
+	*/
+  }
+}
