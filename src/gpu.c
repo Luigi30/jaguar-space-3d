@@ -25,9 +25,9 @@ void GPU_MMULT_START() {
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
 }
 
-#define PRECALCULATE_ADDRESS (0xF03000 + gpu_precalculate_transformation - gpu_matrix_multiply)
-void GPU_PRECALCULATE_START() {
-	MMIO32(G_PC) = (uint32_t)(PRECALCULATE_ADDRESS);
+#define BUILD_TRANSFORMATION (0xF03000 + gpu_build_transformation_matrix - gpu_matrix_multiply)
+void GPU_BUILD_TRANSFORMATION_START() {
+	MMIO32(G_PC) = (uint32_t)(BUILD_TRANSFORMATION);
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
 }
 

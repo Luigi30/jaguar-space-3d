@@ -43,11 +43,9 @@ extern Matrix44 gpu_matrix_result;
 
 extern Vector3FX *ptr_vertex_array;
 
-//Precalculation.
-void GPU_PRECALCULATE_START();
-
-extern const uint8_t gpu_precalculate_transformation[];
-extern const uint8_t gpu_precalculate_transformation_end[];
+void GPU_BUILD_TRANSFORMATION_START();
+extern const uint8_t gpu_build_transformation_matrix[];
+extern const uint8_t gpu_build_transformation_matrix_end[];
 
 extern Matrix44 *gpu_ptr_translation_matrix;
 extern Matrix44 *gpu_ptr_rotation_matrix;

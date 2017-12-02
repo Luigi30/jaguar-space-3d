@@ -6,6 +6,10 @@
 
 	.globl	_mTranslation
 	.globl	_mRotation
+
+	.globl	_m
+	.globl	_mPerspective
+	.globl	_mView
 	.globl	_mModel
 
 	.globl	_M_MultLeft
@@ -21,6 +25,9 @@
 	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),TEMP1
 	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),TEMP2
 
+	move	TEMP1,r14
+	move	TEMP2,r15
+
 	GPU_JSR	FIXED_PRODUCT
 	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
 	
@@ -28,37 +35,77 @@
 
 	COPY_MATRIX_COPY_TEMP	.equr	r3
 	COPY_MATRIX_COPY_ITER	.equr	r4
-	.macro	LOAD_OPERAND_MATRIX from, to	
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.macro	COPY_MATRIX_FROM_POINTER_TO_ARRAY from, to	
 	movei	\from,TEMP1
 	movei	\to,TEMP2 ; this is an array so we just need the address
 	load	(TEMP1),TEMP1	; dereference the matrix pointer to get the matrix address
 
-	movei	#8,COPY_MATRIX_COPY_ITER
+	movei	#16,COPY_MATRIX_COPY_ITER
 
 .matrix_copy_loop_\~:
-	loadp	(TEMP1),COPY_MATRIX_COPY_TEMP
-	storep	COPY_MATRIX_COPY_TEMP,(TEMP2)
+	load	(TEMP1),COPY_MATRIX_COPY_TEMP
+	store	COPY_MATRIX_COPY_TEMP,(TEMP2)
 	subq	#1,COPY_MATRIX_COPY_ITER
-	addq	#8,TEMP1
-	addq	#8,TEMP2
+	addq	#4,TEMP1
+	addq	#4,TEMP2
 	cmpq	#0,COPY_MATRIX_COPY_ITER
 	jr	ne,.matrix_copy_loop_\~
 	nop
 	.endm
 
-	.macro	PUT_RESULT_MATRIX from, to	
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.macro	COPY_MATRIX_FROM_ARRAY_TO_ARRAY from, to	
 	movei	\from,TEMP1
 	movei	\to,TEMP2 ; this is an array so we just need the address
-	load	(TEMP2),TEMP2	; dereference the matrix pointer to get the matrix address
 
-	movei	#8,COPY_MATRIX_COPY_ITER
+	movei	#16,COPY_MATRIX_COPY_ITER
 
 .matrix_copy_loop_\~:
-	loadp	(TEMP1),COPY_MATRIX_COPY_TEMP
-	storep	COPY_MATRIX_COPY_TEMP,(TEMP2)
+	load	(TEMP1),COPY_MATRIX_COPY_TEMP
+	store	COPY_MATRIX_COPY_TEMP,(TEMP2)
 	subq	#1,COPY_MATRIX_COPY_ITER
-	addq	#8,TEMP1
-	addq	#8,TEMP2
+	addq	#4,TEMP1
+	addq	#4,TEMP2
+	cmpq	#0,COPY_MATRIX_COPY_ITER
+	jr	ne,.matrix_copy_loop_\~
+	nop
+	.endm
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.macro	COPY_MATRIX_FROM_POINTER_TO_POINTER from, to	
+	movei	\from,TEMP1
+	movei	\to,TEMP2 ;	
+	load	(TEMP1),TEMP1	; dereference the matrix pointer to get the matrix address
+	load	(TEMP2),TEMP2
+
+	movei	#16,COPY_MATRIX_COPY_ITER
+
+.matrix_copy_loop_\~:
+	load	(TEMP1),COPY_MATRIX_COPY_TEMP
+	store	COPY_MATRIX_COPY_TEMP,(TEMP2)
+	subq	#1,COPY_MATRIX_COPY_ITER
+	addq	#4,TEMP1
+	addq	#4,TEMP2
+	cmpq	#0,COPY_MATRIX_COPY_ITER
+	jr	ne,.matrix_copy_loop_\~
+	nop
+	.endm
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.macro	COPY_MATRIX_FROM_ARRAY_TO_POINTER from, to	
+	movei	\from,TEMP1
+	movei	\to,TEMP2
+	load	(TEMP2),TEMP2	; dereference the matrix pointer to get the matrix address
+
+	movei	#16,COPY_MATRIX_COPY_ITER
+
+.matrix_copy_loop_\~:
+	load	(TEMP1),COPY_MATRIX_COPY_TEMP
+	store	COPY_MATRIX_COPY_TEMP,(TEMP2)
+	subq	#1,COPY_MATRIX_COPY_ITER
+	addq	#4,TEMP1
+	addq	#4,TEMP2
 	cmpq	#0,COPY_MATRIX_COPY_ITER
 	jr	ne,.matrix_copy_loop_\~
 	nop
@@ -74,7 +121,6 @@ _gpu_matrix_multiply::
 	PTR_MATRIX_RESULT	.equr	r10
 	PTR_MATRIX_LEFT		.equr	r11
 	PTR_MATRIX_RIGHT	.equr	r12
-	PTR_MATRIX_RESULT_BASE	.equr	r13
 
 	OFFSET_MATRIX_LEFT	.equr	r14
 	OFFSET_MATRIX_RIGHT	.equr	r15
@@ -82,37 +128,20 @@ _gpu_matrix_multiply::
 	MATRIX_ACCUMULATOR_1	.equr	r16
 	MATRIX_ACCUMULATOR_2	.equr	r17
 
-	STOP_GPU_AT_END		.equr	r18
+	STOP_GPU_AT_END		.equr	r30
 
 	GPU_REG_BANK_1
 	movei	#stack_end,SP
 	movei	#1,STOP_GPU_AT_END
 
 _gpu_matrix_multiply_jsr_entry:
-	movei	#_M_MultLeft, r20
-	movei	#_M_MultRight, r21
-	movei	#_M_MultResult, r22
-	
-	LOAD_OPERAND_MATRIX	#_M_MultLeft,#_gpu_matrix_operand_1
-	LOAD_OPERAND_MATRIX	#_M_MultRight,#_gpu_matrix_operand_2
-
-	;; Zero the result matrix.
-	movei	#_gpu_matrix_result,PTR_MATRIX_RESULT
-	movei	#_gpu_matrix_result,PTR_MATRIX_RESULT_BASE
-	movei	#0,TEMP1
-	movei	#64,TEMP2
-	movei	#0,r14
-	
-.zero_loop:
-	store	TEMP1,(r14+PTR_MATRIX_RESULT)
-	addq	#4,r14
-	cmp	TEMP2,r14
-	jr	ne,.zero_loop
-	nop
+	COPY_MATRIX_FROM_POINTER_TO_ARRAY	#_M_MultLeft,#_gpu_matrix_operand_1
+	COPY_MATRIX_FROM_POINTER_TO_ARRAY	#_M_MultRight,#_gpu_matrix_operand_2
 
 .fill_registers:
 	movei	#_gpu_matrix_operand_1,PTR_MATRIX_LEFT
 	movei	#_gpu_matrix_operand_2,PTR_MATRIX_RIGHT
+	movei	#_gpu_matrix_result,PTR_MATRIX_RESULT
 	
 	;; Row 0 Column 0
 .r0c0:	
@@ -121,8 +150,9 @@ _gpu_matrix_multiply_jsr_entry:
 	MATRIX_MULT_AND_ACC	1, 4, 16 ;
 	MATRIX_MULT_AND_ACC	1, 8, 32 ;
 	MATRIX_MULT_AND_ACC	1, 12,48 ;
+	
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
-
+	
 	;; Row 0 Column 1
 .r0c1:
 	movei	#0,MATRIX_ACCUMULATOR_2
@@ -274,7 +304,7 @@ _gpu_matrix_multiply_jsr_entry:
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 .done:
-	PUT_RESULT_MATRIX #_gpu_matrix_result,#_M_MultResult
+	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_result,#_M_MultResult
 	
 	cmpq	#0,STOP_GPU_AT_END
 	jr	eq,.return
@@ -290,10 +320,10 @@ _gpu_matrix_multiply_end::
 	
 	.phrase
 FIXED_PRODUCT:
-	movei   #G_FLAGS,r4       ; Status flags
-	load    (r4),r3
-	bclr    #14,r3
-	store   r3,(r4)           ; Switch the GPU/DSP to bank 0	
+	GPU_REG_BANK_0
+	nop
+	nop
+	nop
 			
 	;; Subroutine that multiplies two fixed-point numbers TEMP1 and TEMP2.
 	;; Result is returned in TEMP1.
@@ -318,8 +348,8 @@ FIXED_PRODUCT:
 	movei   #$0000FFFF,LOWORD_MASK
 	movei   #0,FIXED_PRODUCT_RESULT
 
-	movefa	TEMP1,FP_A
-	movefa	TEMP2,FP_B
+	movefa	r14,FP_A
+	movefa	r15,FP_B
 	
 	;; Step 1: A.i * B.f
 	move	FP_A,FP_STEP1_OPERAND_1
@@ -366,6 +396,7 @@ FIXED_PRODUCT:
 	and     LOWORD_MASK,FP_STEP5_OPERAND_2 ; get B.f
 	btst    #31,FP_STEP5_OPERAND_1 ; is A a negative number?
 	jr      eq,.neg_b_check
+	nop
 	
 	neg     FP_STEP5_OPERAND_2
 	shlq    #16,FP_STEP5_OPERAND_2
@@ -377,6 +408,7 @@ FIXED_PRODUCT:
 	and     LOWORD_MASK,FP_STEP6_OPERAND_1 ; get A.f
 	btst    #31,FP_STEP6_OPERAND_2 ; is B a negative number?
 	jr      eq,.accumulate
+	nop
 	
 	neg     FP_STEP6_OPERAND_1
 	shlq    #16,FP_STEP6_OPERAND_1
@@ -384,10 +416,20 @@ FIXED_PRODUCT:
 
 .accumulate:
 	add     FP_STEP4_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-.done:	
+	nop
+	nop
+	nop
+	nop
+
+.done:
 	GPU_REG_BANK_1
+	nop
+	nop
+	nop
 	movefa    FIXED_PRODUCT_RESULT,TEMP1
+	nop
+	nop
+	nop
 	GPU_RTS
 
 _gpu_matrix_multiply_program_end::
@@ -401,90 +443,88 @@ _gpu_matrix_operand_1::	dcb.l	16,$AA55AA55 ;operand 1
 _gpu_matrix_operand_2:: dcb.l	16,$AA55AA55 ;operand 2
 	.phrase
 _gpu_matrix_result::	dcb.l	16,$AA55AA55 ;result matrix
+	.phrase
+_gpu_accumulator:	dc.l	0
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	;; Combine Matrix44_Multiply_Matrix44(m, translation, m) *
-	;; 	Matrix44_Multiply_Matrix44(m, mRotation, m) *
-	;; 	into one GPU call.
-
 	.phrase
-_gpu_precalculate_transformation::
-	PC_VALUE_COPY_TEMP	.equr	r10
-	PC_VALUE_COPY_ITER	.equr	r11
-	PC_JUMP_ADDR		.equr	r30
+_gpu_build_transformation_matrix::
+	;; Perform translation * rotation = mModel
+	;; Perform mPerspective * mView * mModel = m
+	movei	#0,r30
 	
-	GPU_REG_BANK_1
-	movei	#stack_end,SP
-	movei	#.done,PC_JUMP_ADDR
+	movei	#_gpu_pc_result_ptr,TEMP1
+	movei	#_gpu_pc_result_storage,TEMP2
+	store	TEMP2,(TEMP1)
+
+	movei	#_M_MultLeft,r27
+	movei	#_M_MultRight,r28
+	movei	#_M_MultResult,r29
+
+	;; Calculate mModel
+	movei	#_mModel,TEMP1
+	movei	#_mRotation,TEMP2
+	load	(TEMP1),TEMP1
+	load	(TEMP2),TEMP2
+	store	TEMP1,(r27)
+	store	TEMP2,(r28)
+	movei	#_gpu_pc_result_storage,TEMP1
+	store	TEMP1,(r29)
+	GPU_JSR	#_gpu_matrix_multiply_jsr_entry
+
+	movei	#_gpu_pc_result_ptr,TEMP1
+	movei	#_mTranslation,TEMP2
+	load	(TEMP1),TEMP1
+	load	(TEMP2),TEMP2
+	store	TEMP1,(r27)
+	store	TEMP2,(r28)
+	movei	#_gpu_pc_result_storage,TEMP1
+	store	TEMP1,(r29)
+	GPU_JSR	#_gpu_matrix_multiply_jsr_entry
+	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_result, #_mModel
+
+	;; m = mModel * mView * mPerspective
+
+	movei	#_m,TEMP1
+	movei	#_mPerspective,TEMP2
+	load	(TEMP1),TEMP1
+	load	(TEMP2),TEMP2
+	store	TEMP1,(r27)
+	store	TEMP2,(r28)
+	movei	#_gpu_pc_result_storage,TEMP1
+	store	TEMP1,(r29)
+	GPU_JSR	#_gpu_matrix_multiply_jsr_entry
+
+	movei	#_gpu_pc_result_ptr,TEMP1
+	movei	#_mView,TEMP2
+	load	(TEMP1),TEMP1
+	load	(TEMP2),TEMP2
+	store	TEMP1,(r27)
+	store	TEMP2,(r28)
+	movei	#_gpu_pc_result_storage,TEMP1
+	store	TEMP1,(r29)
+	GPU_JSR	#_gpu_matrix_multiply_jsr_entry
+
+	movei	#_gpu_pc_result_ptr,TEMP1
+	movei	#_mModel,TEMP2
+	load	(TEMP1),TEMP1
+	load	(TEMP2),TEMP2
+	store	TEMP1,(r27)
+	store	TEMP2,(r28)
+	movei	#_gpu_pc_result_storage,TEMP1
+	store	TEMP1,(r29)
+	GPU_JSR	#_gpu_matrix_multiply_jsr_entry
+
+	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_result, #_m
 	
-.copy_translation_matrix:
-	movei	#_mTranslation,TEMP1
-	movei	#_gpu_matrix_operand_1,TEMP2 ; this is an array so we just need the address
-	load	(TEMP1),TEMP1	; dereference the matrix pointer to get the matrix address
-
-	movei	#8,PC_VALUE_COPY_ITER
-
-.translation_matrix_copy_loop:
-	loadp	(TEMP1),PC_VALUE_COPY_TEMP
-	storep	PC_VALUE_COPY_TEMP,(TEMP2)
-	subq	#1,PC_VALUE_COPY_ITER
-	addq	#8,TEMP1
-	addq	#8,TEMP2
-	cmpq	#0,PC_VALUE_COPY_ITER
-	jr	ne,.translation_matrix_copy_loop
-	nop
-
-.copy_rotation_matrix:
-	movei	#_mRotation,TEMP1
-	movei	#_gpu_matrix_operand_2,TEMP2 ; this is an array so we just need the address
-	load	(TEMP1),TEMP1	; dereference the translation matrix pointer to get the matrix address
-
-	movei	#8,PC_VALUE_COPY_ITER
-
-.rotation_matrix_copy_loop:
-	loadp	(TEMP1),PC_VALUE_COPY_TEMP
-	storep	PC_VALUE_COPY_TEMP,(TEMP2)
-	subq	#1,PC_VALUE_COPY_ITER
-	addq	#8,TEMP1
-	addq	#8,TEMP2
-	cmpq	#0,PC_VALUE_COPY_ITER
-	jr	ne,.rotation_matrix_copy_loop
-	nop
-
-	;; OK, now multiply.	
-	movei	#0,STOP_GPU_AT_END
-	GPU_JSR _gpu_matrix_multiply_jsr_entry
-
-.result_copy:
-	movei	#_mModel,TEMP2 ; this is a pointer
-	movei	#_gpu_matrix_result,TEMP1 ; this is an array
-	load	(TEMP2),TEMP2	; dereference the final transformation matrix pointer
-
-	movei	#8,PC_VALUE_COPY_ITER
-
-.result_matrix_copy_loop:
-	loadp	(TEMP1),PC_VALUE_COPY_TEMP
-	storep	PC_VALUE_COPY_TEMP,(TEMP2)
-	subq	#1,PC_VALUE_COPY_ITER
-	addq	#8,TEMP1
-	addq	#8,TEMP2
-	cmpq	#0,PC_VALUE_COPY_ITER
-	jr	ne,.result_matrix_copy_loop
-	nop
-
-.done:
 	StopGPU
 	nop
-
-_gpu_precalculate_transformation_end::
+_gpu_build_transformation_matrix_end::
 
 	;; Precalculate variables.
 	.phrase
-_gpu_ptr_translation_matrix::	dc.l	0 ;ptr to the translation matrix
-_gpu_ptr_rotation_matrix::	dc.l	0 ;ptr to the rotation matrix
-_gpu_ptr_camera_matrix::	dc.l	0 ;ptr to the camera matrix (just Identity for now)
-_gpu_ptr_transformation_matrix::dc.l	0 ;ptr where we'll save the result
-_gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result
+_gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result\
+_gpu_pc_result_ptr:		dc.l	0
 	
 	.68000
 _gpu_matrix_program_end::

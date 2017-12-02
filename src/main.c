@@ -164,54 +164,58 @@ int main() {
     mobj_background.graphic->p1.index  = 0;
   }
 
-  skunkCONSOLEWRITE("background layer initialized\n");
-  
-  //Start the list here.
-  jag_attach_olp(mobj_background.graphic);
+	skunkCONSOLEWRITE("background layer initialized\n");
 
-  skunkCONSOLEWRITE("object list attached\n");
+	//Start the list here.
+	jag_attach_olp(mobj_background.graphic);
+
+	skunkCONSOLEWRITE("object list attached\n");
 		
-  uint32_t stick0, stick0_lastread;
-  uint16_t framecounter = 0;
-  uint32_t framenumber = 0;
-  
-  Shape cube;
-  cube.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-  cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-  cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-  
-  cube.triangles[0] = triangle1;
-  cube.triangles[1] = triangle2;
-  cube.triangles[2] = triangle3;
-  cube.triangles[3] = triangle4;
-  cube.triangles[4] = triangle5;
-  cube.triangles[5] = triangle6;
-  cube.triangles[6] = triangle7;
-  cube.triangles[7] = triangle8;
-  cube.triangles[8] = triangle9;
-  cube.triangles[9] = triangle10;
-  cube.triangles[10] = triangle11;
-  
-  DSP_LOAD_MATRIX_PROGRAM();
-  skunkCONSOLEWRITE("DSP program uploaded.\n");
-  
-  Vector3FX transformedVertexList[4];
+	uint32_t stick0, stick0_lastread;
+	uint16_t framecounter = 0;
+	uint32_t framenumber = 0;
 
-  m = calloc(1, sizeof(Matrix44));
-  mTranslation = calloc(1, sizeof(Matrix44));
-  mRotation = calloc(1, sizeof(Matrix44));
-  mModel = calloc(1, sizeof(Matrix44));
+	Shape cube;
+	cube.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
 
-  mPerspective = calloc(1, sizeof(Matrix44));
-  buildPerspectiveMatrix(mPerspective);
+	cube.triangles[0] = triangle1;
+	cube.triangles[1] = triangle2;
+	cube.triangles[2] = triangle3;
+	cube.triangles[3] = triangle4;
+	cube.triangles[4] = triangle5;
+	cube.triangles[5] = triangle6;
+	cube.triangles[6] = triangle7;
+	cube.triangles[7] = triangle8;
+	cube.triangles[8] = triangle9;
+	cube.triangles[9] = triangle10;
+	cube.triangles[10] = triangle11;
+
+	DSP_LOAD_MATRIX_PROGRAM();
+	skunkCONSOLEWRITE("DSP program uploaded.\n");
+
+	Vector3FX transformedVertexList[4];
+
+	m = calloc(1, sizeof(Matrix44));
+	mTranslation = calloc(1, sizeof(Matrix44));
+	mRotation = calloc(1, sizeof(Matrix44));
+	mModel = calloc(1, sizeof(Matrix44));
+
+	mPerspective = calloc(1, sizeof(Matrix44));
+	buildPerspectiveMatrix(mPerspective);
+
+	skunkCONSOLEWRITE("Entering main loop.\n");
+
+	//Init Matrix44_VectorProduct
+	mvp_vector = calloc(1, sizeof(Vector3FX));
+	mvp_matrix = calloc(1, sizeof(Matrix44));
+	mvp_result = calloc(1, sizeof(Vector3FX));
   
-  skunkCONSOLEWRITE("Entering main loop.\n");
-  
-  //Init Matrix44_VectorProduct
-  mvp_vector = calloc(1, sizeof(Vector3FX));
-  mvp_matrix = calloc(1, sizeof(Matrix44));
-  mvp_result = calloc(1, sizeof(Vector3FX));
-  
+	VIEW_EYE 	= (Vector3FX){ 0x0000000, 0x00000000, 0x00040000 };
+	VIEW_CENTER = (Vector3FX){ 0, 0, 0xFFFC0000 };
+	VIEW_UP 	= (Vector3FX){ 0, 0x00010000, 0 };
+		
   while(true) {
 	  
     if(front_buffer == background_frame_0)
@@ -234,18 +238,15 @@ int main() {
 	/* 3D! */
 	skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM\n");
     GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
-		
-	Vector3FX EYE = { 0x00000000, 0x00000000, 0x00060000 };
-	Vector3FX CENTER = { 0, 0, 0xFFFC0000 };
-	Vector3FX UP = { 0, 0x00010000, 0 };
-		
-	Matrix44 *mView = calloc(1, sizeof(Matrix44));
-	skunkCONSOLEWRITE("Building view matrix\n");
-	buildViewMatrix(mView, EYE, CENTER, UP);
 	
-    cube.rotation.x = (cube.rotation.x + 0x00040000) % 0x01680000;
-    cube.rotation.y = (cube.rotation.y + 0x00040000) % 0x01680000;
-    cube.rotation.z = (cube.rotation.z + 0x00040000) % 0x01680000;
+	mView = calloc(1, sizeof(Matrix44));
+	skunkCONSOLEWRITE("Building view matrix\n");
+	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
+	
+	//TODO: This crashes if we reach 180 degrees in all 3 directions?
+    cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
+    cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+    cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
 	
 	skunkCONSOLEWRITE("Building rotation matrix\n");
 	Matrix44_Identity(mRotation);
@@ -315,69 +316,17 @@ int main() {
 	  
     stick0_lastread = stick0;
 	
-    jag_dsp_wait();
 	//skunkCONSOLEWRITE("translation\n");
     Matrix44_Translation(cube.translation, mTranslation);
     jag_dsp_wait();
 	
-	//sprintf(skunkoutput, "translation %p, rotation %p, transformation %p\n", gpu_ptr_translation_matrix, gpu_ptr_rotation_matrix, gpu_ptr_transformation_matrix);
-	//skunkCONSOLEWRITE(skunkoutput);
-	//skunkCONSOLEWRITE("GPU_PRECALCULATE_START()\n");
-	
 	Matrix44_Identity(m);
 	Matrix44_Identity(mModel);
+
+	GPU_BUILD_TRANSFORMATION_START();
+	jag_gpu_wait();	
 	
-	Matrix44_Multiply_Matrix44(mModel, mRotation, mModel);
-	Matrix44_Multiply_Matrix44(mModel, mTranslation, mModel);
-	
-	//GPU_PRECALCULATE_START(); //mModel = mTranslation * mRotation
-	
-	jag_gpu_wait();
-	
-	skunkCONSOLEWRITE("mView\n");
-	
-	MMIO32(0x60000) = 0x88888888;
-	
-	Matrix44_Multiply_Matrix44(m, mPerspective, m);
-	Matrix44_Multiply_Matrix44(m, mView, m);
-	Matrix44_Multiply_Matrix44(m, mModel, m);
-	
-	sprintf(skunkoutput, "*** MODEL MATRIX ***\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n",
-		mModel->data[0][0], mModel->data[0][1], mModel->data[0][2], mModel->data[0][3], 
-		mModel->data[1][0], mModel->data[1][1], mModel->data[1][2], mModel->data[1][3], 
-		mModel->data[2][0], mModel->data[2][1], mModel->data[2][2], mModel->data[2][3], 
-		mModel->data[3][0], mModel->data[3][1], mModel->data[3][2], mModel->data[3][3] 
-		);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "*** VIEW MATRIX ***\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n",
-		mView->data[0][0], mView->data[0][1], mView->data[0][2], mView->data[0][3], 
-		mView->data[1][0], mView->data[1][1], mView->data[1][2], mView->data[1][3], 
-		mView->data[2][0], mView->data[2][1], mView->data[2][2], mView->data[2][3], 
-		mView->data[3][0], mView->data[3][1], mView->data[3][2], mView->data[3][3] 
-		);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "*** PERSPECTIVE MATRIX ***\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n",
-		mPerspective->data[0][0], mPerspective->data[0][1], mPerspective->data[0][2], mPerspective->data[0][3], 
-		mPerspective->data[1][0], mPerspective->data[1][1], mPerspective->data[1][2], mPerspective->data[1][3], 
-		mPerspective->data[2][0], mPerspective->data[2][1], mPerspective->data[2][2], mPerspective->data[2][3], 
-		mPerspective->data[3][0], mPerspective->data[3][1], mPerspective->data[3][2], mPerspective->data[3][3] 
-		);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "*** TRANSFORMATION MATRIX ***\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n%08X %08X %08X %08X\n",
-		m->data[0][0], m->data[0][1], m->data[0][2], m->data[0][3], 
-		m->data[1][0], m->data[1][1], m->data[1][2], m->data[1][3], 
-		m->data[2][0], m->data[2][1], m->data[2][2], m->data[2][3], 
-		m->data[3][0], m->data[3][1], m->data[3][2], m->data[3][3] 
-		);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	jag_dsp_wait();
-	jag_gpu_wait();
-	
-	MMIO32(0x60000) = 0x99999999;
+	skunkCONSOLEWRITE("Transformation is calculated!\n");
   
 	skunkCONSOLEWRITE("LINEDRAW\n");
     GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
@@ -385,17 +334,6 @@ int main() {
 	/* TODO: Perspective transformation. The vertex coordinates aren't correct after the VectorProduct operation? */
 	Vector4FX projectedPoints[3];
 	
-	transformedVertexList[0].x = INT_TO_FIXED(100);
-	transformedVertexList[0].y = INT_TO_FIXED(50);
-	
-	transformedVertexList[1].x = INT_TO_FIXED(200);
-	transformedVertexList[1].y = INT_TO_FIXED(50);
-
-	transformedVertexList[2].x = INT_TO_FIXED(100);
-	transformedVertexList[2].y = INT_TO_FIXED(50);	
-	
-	gpu_blit_triangle(transformedVertexList, 255);
-
     for(int triNum=0; triNum<11; triNum++){		
       for(int i=0;i<3;i++){
 		Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &projectedPoints[i]);
@@ -415,12 +353,15 @@ int main() {
 		transformedVertexList[i].x = projectedPoints[i].x;
 		transformedVertexList[i].y = projectedPoints[i].y;
 		
+		/*
 		MMIO32(0x60020 + (0x10*i)) = cube.triangles[triNum][i].x;
 		MMIO32(0x60024 + (0x10*i)) = cube.triangles[triNum][i].y;
 		MMIO32(0x60028 + (0x10*i)) = cube.triangles[triNum][i].z;
 		MMIO32(0x6002C + (0x10*i)) = 0xCCCCCCCC;
+		*/
       }
 	  
+		/*
 		MMIO32(0x60000) = (uint32_t)projectedPoints;
 		MMIO32(0x60004) = (uint32_t)m;
 		MMIO32(0x60008) = (uint32_t)cube.triangles[triNum];
@@ -429,10 +370,9 @@ int main() {
 		MMIO32(0x60060) = projectedPoints[0].x; MMIO32(0x60064) = projectedPoints[0].y; MMIO32(0x60068) = projectedPoints[0].z; MMIO32(0x6006C) = projectedPoints[0].w;
 		MMIO32(0x60070) = projectedPoints[1].x; MMIO32(0x60074) = projectedPoints[1].y; MMIO32(0x60078) = projectedPoints[1].z; MMIO32(0x6007C) = projectedPoints[1].w;
 		MMIO32(0x60080) = projectedPoints[2].x; MMIO32(0x60084) = projectedPoints[2].y; MMIO32(0x60088) = projectedPoints[2].z; MMIO32(0x6008C) = projectedPoints[2].w;
+		*/
 		
-		skunkCONSOLEWRITE("triangle calculated, halting\n");
-		
-		//gpu_blit_triangle(transformedVertexList, 255);
+		gpu_blit_triangle(transformedVertexList, 255);
 		jag_gpu_wait();
     }
 	

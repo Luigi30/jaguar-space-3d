@@ -52,10 +52,12 @@ MotionObject mobj_background;
 MotionObject mobj_font;
 MotionObject mobj_sprites;
 
-Matrix44 *m, *mTranslation, *mRotation, *mCamera, *mPerspective, *mModel;
+Matrix44 *m, *mTranslation, *mRotation, *mCamera, *mView, *mPerspective, *mModel;
 
 Vector3FX *mvp_vector, *mvp_result;
 Matrix44 *mvp_matrix;
+
+Vector3FX VIEW_EYE, VIEW_CENTER, VIEW_UP;
 
 /*
  * TOM REGISTERS
