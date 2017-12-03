@@ -2,17 +2,18 @@
 #include "jaglib.h"
 
 void GPU_LOAD_LINEDRAW_PROGRAM() {
-  skunkCONSOLEWRITE("GPU_LOAD_LINEDRAW_PROGRAM(): beginning upload.\n");
-  jag_memcpy32p(G_RAM, blit_triangle, 1, 1024);
-  jag_wait_blitter_ready();
-  skunkCONSOLEWRITE("GPU_LOAD_LINEDRAW_PROGRAM(): upload complete\n");
+  //skunkCONSOLEWRITE("GPU_LOAD_LINEDRAW_PROGRAM(): beginning upload.\n");
+  int bytes = 4096;
+  memcpy(G_RAM, blit_triangle_program_start, bytes);
+  //skunkCONSOLEWRITE("GPU_LOAD_LINEDRAW_PROGRAM(): upload complete\n");
 }
 
 void GPU_LOAD_MMULT_PROGRAM() {
-  skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM(): beginning upload.\n");
-  jag_memcpy32p(G_RAM, gpu_matrix_multiply_program_start, 1, 1024);
-  jag_wait_blitter_ready();
-  skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM(): upload complete\n");
+	int bytes = 4096;
+	//sprintf(skunkoutput, "GPU_LOAD_MMULT_PROGRAM(): Uploading %d bytes at %p to %p\n", bytes, gpu_matrix_multiply_program_start, G_RAM);	
+	//skunkCONSOLEWRITE(skunkoutput);
+	memcpy(G_RAM, gpu_matrix_multiply_program_start, bytes);
+	//skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM(): upload complete\n");
 }
 
 void GPU_START(uint8_t *function) {
@@ -28,6 +29,12 @@ void GPU_MMULT_START() {
 #define BUILD_TRANSFORMATION (0xF03000 + gpu_build_transformation_matrix - gpu_matrix_multiply)
 void GPU_BUILD_TRANSFORMATION_START() {
 	MMIO32(G_PC) = (uint32_t)(BUILD_TRANSFORMATION);
+	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
+}
+
+#define PROJECT_AND_DRAW_TRIANGLE (0xF03000 + gpu_project_and_draw_triangle - blit_triangle)
+void GPU_PROJECT_AND_DRAW_TRIANGLE() {
+	MMIO32(G_PC) = (uint32_t)(PROJECT_AND_DRAW_TRIANGLE);
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
 }
 

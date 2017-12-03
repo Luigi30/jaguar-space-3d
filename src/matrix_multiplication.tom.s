@@ -22,11 +22,8 @@
 	
 	movei	#\offset_left,OFFSET_MATRIX_LEFT
 	movei	#\offset_right,OFFSET_MATRIX_RIGHT
-	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),TEMP1
-	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),TEMP2
-
-	move	TEMP1,r14
-	move	TEMP2,r15
+	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),r14
+	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),r15
 
 	GPU_JSR	FIXED_PRODUCT
 	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
@@ -134,6 +131,7 @@ _gpu_matrix_multiply::
 	movei	#stack_end,SP
 	movei	#1,STOP_GPU_AT_END
 
+	.phrase
 _gpu_matrix_multiply_jsr_entry:
 	COPY_MATRIX_FROM_POINTER_TO_ARRAY	#_M_MultLeft,#_gpu_matrix_operand_1
 	COPY_MATRIX_FROM_POINTER_TO_ARRAY	#_M_MultRight,#_gpu_matrix_operand_2
@@ -419,7 +417,6 @@ FIXED_PRODUCT:
 	nop
 	nop
 	nop
-	nop
 
 .done:
 	GPU_REG_BANK_1
@@ -451,7 +448,7 @@ _gpu_accumulator:	dc.l	0
 _gpu_build_transformation_matrix::
 	;; Perform translation * rotation = mModel
 	;; Perform mPerspective * mView * mModel = m
-	movei	#0,r30
+	movei	#0,r30		; set up the matrix multiply as a JSR and not a standalone program
 	
 	movei	#_gpu_pc_result_ptr,TEMP1
 	movei	#_gpu_pc_result_storage,TEMP2
@@ -523,7 +520,8 @@ _gpu_build_transformation_matrix_end::
 
 	;; Precalculate variables.
 	.phrase
-_gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result\
+_gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result
+	.phrase
 _gpu_pc_result_ptr:		dc.l	0
 	
 	.68000

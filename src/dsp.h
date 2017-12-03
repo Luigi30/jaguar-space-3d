@@ -17,6 +17,8 @@ void DSP_LOAD_MATRIX_PROGRAM();
 void DSP_START(uint8_t *function);
 void DSP_Matrix_Start_ASM(__reg("a0") uint8_t *function);
 
+extern char skunkoutput[128];
+
 /**************************
  * Matrix stuff
  **************************/

@@ -39,6 +39,7 @@ void Matrix44_Multiply_Matrix44(Matrix44 *left, Matrix44 *right, Matrix44 *resul
 	M_MultRight = right;
 	M_MultResult = result;
 
+	/*
 	sprintf(skunkoutput, "M_MultLeft: %p, M_MultRight: %p, M_MultResult: %p, gpu_matrix_result: %p\n", M_MultLeft, M_MultRight, M_MultResult, &gpu_matrix_result);
 	skunkCONSOLEWRITE(skunkoutput);
 	
@@ -57,6 +58,7 @@ void Matrix44_Multiply_Matrix44(Matrix44 *left, Matrix44 *right, Matrix44 *resul
 		right->data[3][0], right->data[3][1], right->data[3][2], right->data[3][3]
 	);
 	skunkCONSOLEWRITE(skunkoutput);
+	*/
 	
 	sprintf(skunkoutput, "GPU_MMULT_START: left %p right %p result %p\n", left, right, result);
 	skunkCONSOLEWRITE(skunkoutput);
@@ -64,6 +66,7 @@ void Matrix44_Multiply_Matrix44(Matrix44 *left, Matrix44 *right, Matrix44 *resul
 	GPU_MMULT_START();
 	jag_gpu_wait();
 	
+	/*
 	sprintf(skunkoutput, "MMULT: GPU Left\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
 		M_MultLeft->data[0][0], M_MultLeft->data[0][1], M_MultLeft->data[0][2], M_MultLeft->data[0][3], 
 		M_MultLeft->data[1][0], M_MultLeft->data[1][1], M_MultLeft->data[1][2], M_MultLeft->data[1][3], 
@@ -95,6 +98,7 @@ void Matrix44_Multiply_Matrix44(Matrix44 *left, Matrix44 *right, Matrix44 *resul
 		result->data[3][0], result->data[3][1], result->data[3][2], result->data[3][3]
 	);
 	skunkCONSOLEWRITE(skunkoutput);
+	*/
 }
 
 const FIXED_32 ONE_DEGREE = (uint32_t)1143; //1 degree in radians == ~0.0174533 == ~1143/65535

@@ -19,6 +19,8 @@ extern char skunkoutput[128];
 extern uint8_t blit_triangle[];
 extern uint8_t blit_triangle_end[];
 
+extern uint8_t blit_triangle_program_start[];
+
 extern uint16_t Line_X1;
 extern uint16_t Line_X2;
 extern uint16_t Line_Y1;
@@ -51,5 +53,12 @@ extern Matrix44 *gpu_ptr_translation_matrix;
 extern Matrix44 *gpu_ptr_rotation_matrix;
 extern Matrix44 *gpu_ptr_camera_matrix;
 extern Matrix44 *gpu_ptr_transformation_matrix;
+
+/* Object drawing */
+extern Matrix44 *object_M;
+extern Vector3FX *object_Triangle;
+
+extern const uint8_t gpu_project_and_draw_triangle[];
+extern const uint8_t gpu_project_and_draw_triangle_end[];
 
 #endif

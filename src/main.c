@@ -8,9 +8,12 @@
 
 Vector3FX cameraTranslation;
 
+Matrix44 *object_M;
+Vector3FX *object_Triangle;
+
 typedef struct shape_t {
   Vector3FX translation, rotation, scale;
-  Vector3FX *triangles[16];
+  Vector3FX **triangles;	//Pointer to the triangles array of the shape.
 } Shape;
 
 extern uint32_t gpu_register_dump[32];
@@ -175,28 +178,17 @@ int main() {
 	uint16_t framecounter = 0;
 	uint32_t framenumber = 0;
 
+	//Init cube
 	Shape cube;
 	cube.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
 	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
 	cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-
-	cube.triangles[0] = triangle1;
-	cube.triangles[1] = triangle2;
-	cube.triangles[2] = triangle3;
-	cube.triangles[3] = triangle4;
-	cube.triangles[4] = triangle5;
-	cube.triangles[5] = triangle6;
-	cube.triangles[6] = triangle7;
-	cube.triangles[7] = triangle8;
-	cube.triangles[8] = triangle9;
-	cube.triangles[9] = triangle10;
-	cube.triangles[10] = triangle11;
+	cube.triangles = cube_triangles;
 
 	DSP_LOAD_MATRIX_PROGRAM();
 	skunkCONSOLEWRITE("DSP program uploaded.\n");
-
-	Vector3FX transformedVertexList[4];
-
+	
+	//Init transformation matrix
 	m = calloc(1, sizeof(Matrix44));
 	mTranslation = calloc(1, sizeof(Matrix44));
 	mRotation = calloc(1, sizeof(Matrix44));
@@ -212,9 +204,12 @@ int main() {
 	mvp_matrix = calloc(1, sizeof(Matrix44));
 	mvp_result = calloc(1, sizeof(Vector3FX));
   
-	VIEW_EYE 	= (Vector3FX){ 0x0000000, 0x00000000, 0x00040000 };
-	VIEW_CENTER = (Vector3FX){ 0, 0, 0xFFFC0000 };
+	//Init view parameters
+	VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00040000 };
+	VIEW_CENTER = (Vector3FX){ 0x00000000, 0, 0xFFFC0000 };
 	VIEW_UP 	= (Vector3FX){ 0, 0x00010000, 0 };
+	
+	Vector3FX transformedVertexList[4];
 		
   while(true) {
 	  
@@ -280,39 +275,41 @@ int main() {
     stick0 = jag_read_stick0(STICK_READ_ALL);
     /* Debounced - only triggers once per press */
     switch(stick0 ^ stick0_lastread)
-      {
-      case STICK_UP:
-	    //if(~stick0_lastread & STICK_UP) printf("Up\n");
-	    break;
-      case STICK_DOWN:
-	    //if(~stick0_lastread & STICK_DOWN) printf("Down\n");
-	    break;
-      case STICK_LEFT:
-	      if(~stick0_lastread & STICK_LEFT)
-        {
-        cameraTranslation.x = FIXED_SUB(cameraTranslation.x, INT_TO_FIXED(10));
-        }
-      break;
-      case STICK_RIGHT:
-      if(~stick0_lastread & STICK_RIGHT)
-        {
-        cameraTranslation.x = FIXED_ADD(cameraTranslation.x, INT_TO_FIXED(10));
-        }
-      break;
-      case STICK_A:
-      //if(~stick0_lastread & STICK_A) printf("A\n");
-      if(~stick0_lastread & STICK_A)
-        {
-          
-        }
-      break;
-      case STICK_B:
-      //if(~stick0_lastread & STICK_B) printf("B\n");
-      break;
-      case STICK_C:
-      //if(~stick0_lastread & STICK_C) printf("C\n");
-      break;
-      }
+	{
+	case STICK_UP:
+		//if(~stick0_lastread & STICK_UP) printf("Up\n");
+	break;
+	case STICK_DOWN:
+		//if(~stick0_lastread & STICK_DOWN) printf("Down\n");
+	break;
+	case STICK_LEFT:
+		if(~stick0_lastread & STICK_LEFT)
+		{
+			VIEW_EYE.x -= 0x00010000;
+			VIEW_CENTER.x -= 0x00010000;
+		}
+	break;
+	case STICK_RIGHT:
+		if(~stick0_lastread & STICK_RIGHT)
+		{
+			VIEW_EYE.x += 0x00010000;
+			VIEW_CENTER.x += 0x00010000;
+		}
+	break;
+	case STICK_A:
+		//if(~stick0_lastread & STICK_A) printf("A\n");
+	if(~stick0_lastread & STICK_A)
+	{
+	  
+	}
+	break;
+	case STICK_B:
+		//if(~stick0_lastread & STICK_B) printf("B\n");
+	break;
+	case STICK_C:
+		//if(~stick0_lastread & STICK_C) printf("C\n");
+	break;
+	}
 	  
     stick0_lastread = stick0;
 	
@@ -336,44 +333,49 @@ int main() {
 	
     for(int triNum=0; triNum<11; triNum++){		
       for(int i=0;i<3;i++){
+		//object_M = m;
+		//object_Triangle = cube.triangles[triNum];
+
 		Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &projectedPoints[i]);
 
 		//Perspective divide.
 		projectedPoints[i].x = FIXED_DIV(projectedPoints[i].x, projectedPoints[i].w);
 		projectedPoints[i].y = FIXED_DIV(projectedPoints[i].y, projectedPoints[i].w);
 		projectedPoints[i].z = FIXED_DIV(projectedPoints[i].z, projectedPoints[i].w);
-		
+
 		//Translate the points to screen coordinates.
 		projectedPoints[i].x = FIXED_MUL(projectedPoints[i].x, INT_TO_FIXED(160));
 		projectedPoints[i].y = FIXED_MUL(projectedPoints[i].y, INT_TO_FIXED(100));
-		
+
 		projectedPoints[i].x += INT_TO_FIXED(160);
 		projectedPoints[i].y += INT_TO_FIXED(100);
-		
+
 		transformedVertexList[i].x = projectedPoints[i].x;
 		transformedVertexList[i].y = projectedPoints[i].y;
-		
+
 		/*
 		MMIO32(0x60020 + (0x10*i)) = cube.triangles[triNum][i].x;
 		MMIO32(0x60024 + (0x10*i)) = cube.triangles[triNum][i].y;
 		MMIO32(0x60028 + (0x10*i)) = cube.triangles[triNum][i].z;
 		MMIO32(0x6002C + (0x10*i)) = 0xCCCCCCCC;
 		*/
-      }
-	  
+		}
+
 		/*
 		MMIO32(0x60000) = (uint32_t)projectedPoints;
 		MMIO32(0x60004) = (uint32_t)m;
 		MMIO32(0x60008) = (uint32_t)cube.triangles[triNum];
 		MMIO32(0x6000C) = (uint32_t)mPerspective;
-		
+
 		MMIO32(0x60060) = projectedPoints[0].x; MMIO32(0x60064) = projectedPoints[0].y; MMIO32(0x60068) = projectedPoints[0].z; MMIO32(0x6006C) = projectedPoints[0].w;
 		MMIO32(0x60070) = projectedPoints[1].x; MMIO32(0x60074) = projectedPoints[1].y; MMIO32(0x60078) = projectedPoints[1].z; MMIO32(0x6007C) = projectedPoints[1].w;
 		MMIO32(0x60080) = projectedPoints[2].x; MMIO32(0x60084) = projectedPoints[2].y; MMIO32(0x60088) = projectedPoints[2].z; MMIO32(0x6008C) = projectedPoints[2].w;
 		*/
-		
+
 		gpu_blit_triangle(transformedVertexList, 255);
 		jag_gpu_wait();
+		
+		//while(true) {};
     }
 	
     //skunkCONSOLEWRITE("Frame\n");
