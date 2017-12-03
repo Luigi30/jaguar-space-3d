@@ -331,13 +331,17 @@ int main() {
 	/* TODO: Perspective transformation. The vertex coordinates aren't correct after the VectorProduct operation? */
 	Vector4FX projectedPoints[3];
 	
-    for(int triNum=0; triNum<11; triNum++){		
+    for(int triNum=0; triNum<11; triNum++){	
+		object_M = m;
+		object_Triangle = cube.triangles[triNum];
+		GPU_PROJECT_AND_DRAW_TRIANGLE();
+	
       for(int i=0;i<3;i++){
-		//object_M = m;
-		//object_Triangle = cube.triangles[triNum];
-
 		Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &projectedPoints[i]);
+		
+		MMIO32(0x60000) = (uint32_t)&projectedPoints[i];
 
+		/*
 		//Perspective divide.
 		projectedPoints[i].x = FIXED_DIV(projectedPoints[i].x, projectedPoints[i].w);
 		projectedPoints[i].y = FIXED_DIV(projectedPoints[i].y, projectedPoints[i].w);
@@ -352,6 +356,7 @@ int main() {
 
 		transformedVertexList[i].x = projectedPoints[i].x;
 		transformedVertexList[i].y = projectedPoints[i].y;
+		*/
 
 		/*
 		MMIO32(0x60020 + (0x10*i)) = cube.triangles[triNum][i].x;
@@ -372,10 +377,10 @@ int main() {
 		MMIO32(0x60080) = projectedPoints[2].x; MMIO32(0x60084) = projectedPoints[2].y; MMIO32(0x60088) = projectedPoints[2].z; MMIO32(0x6008C) = projectedPoints[2].w;
 		*/
 
+		while(true) {};
+		
 		gpu_blit_triangle(transformedVertexList, 255);
 		jag_gpu_wait();
-		
-		//while(true) {};
     }
 	
     //skunkCONSOLEWRITE("Frame\n");

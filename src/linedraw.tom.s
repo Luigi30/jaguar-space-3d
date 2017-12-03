@@ -67,7 +67,7 @@ _blit_triangle_program_start::
 
 _blit_triangle::
 	GPU_REG_BANK_1
-	movei	#stack_end,SP
+	movei	#stack_bank_1_end,SP
 	
 setup_blit:
 	GPU_REG_BANK_0
@@ -450,27 +450,61 @@ _gpu_mvp_matrix_ptr:	dc.l	0
 _gpu_mvp_matrix:	dcb.l	16,0
 
 	.phrase			; Three Vector4FX for the triangle points.
-_gpu_tri_point_1:	dcb.l	16,0
-_gpu_tri_point_2:	dcb.l	16,0
-_gpu_tri_point_3:	dcb.l	16,0
+_gpu_tri_point_1:	dcb.l	4,0
+_gpu_tri_point_2:	dcb.l	4,0
+_gpu_tri_point_3:	dcb.l	4,0
 	
 	.globl	_object_M
 	.globl	_object_Triangle
 	
 	.phrase
 _gpu_project_and_draw_triangle::
-	movei	#stack_end,SP
+	GPU_REG_BANK_0
+	nop
+	
+	movei	#stack_bank_0_end,SP
 	
 	;; Get matrix-vector product of each of the points.
+
+.triangle1:
 	movei	#_object_M,TEMP1
+	load	(TEMP1),TEMP1
 	movei	#_gpu_mvp_matrix_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 
 	movei	#_object_Triangle,TEMP1	;ptr to the first triangle's coords
+	load	(TEMP1),TEMP1
 	movei	#_gpu_mvp_vector_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 
 	movei	#_gpu_tri_point_1,TEMP1
+	movei	#_gpu_mvp_result_ptr,TEMP2
+	store	TEMP1,(TEMP2)
+
+	GPU_JSR	_gpu_matrix_vector_product
+
+.triangle2:
+	movei	#_object_Triangle,TEMP1	;ptr to the first triangle's coords
+	load	(TEMP1),TEMP1
+	addq	#12,TEMP1	;advance to triangle #2
+	movei	#_gpu_mvp_vector_ptr,TEMP2
+	store	TEMP1,(TEMP2)
+	
+	movei	#_gpu_tri_point_2,TEMP1
+	movei	#_gpu_mvp_result_ptr,TEMP2
+	store	TEMP1,(TEMP2)
+
+	GPU_JSR	_gpu_matrix_vector_product
+
+.triangle3:
+	movei	#_object_Triangle,TEMP1	;ptr to the first triangle's coords
+	load	(TEMP1),TEMP1
+	addq	#12,TEMP1	;advance to triangle #2
+	addq	#12,TEMP1	;advance to triangle #3
+	movei	#_gpu_mvp_vector_ptr,TEMP2
+	store	TEMP1,(TEMP2)
+	
+	movei	#_gpu_tri_point_3,TEMP1
 	movei	#_gpu_mvp_result_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 
@@ -510,32 +544,40 @@ _gpu_matrix_vector_product:
 	movei	#0,MV_MATRIX_OFFSET
 	movei	#0,MV_RESULT_OFFSET
 
-	movei	#stack_end,SP
+	movei	#stack_bank_1_end,SP
 
 .calculate_x:
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18	
 	GPU_JSR	FIXED_PRODUCT	; matrix->data[0][0] * vector->x
-	move	TEMP1,MV_ACCUMULATOR
+	move	r5,MV_ACCUMULATOR
 
+	or	r5,r5
+	
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR FIXED_PRODUCT	; matrix->data[0][1] * vector->y
-	add	TEMP1,MV_ACCUMULATOR
+	add	r5,MV_ACCUMULATOR
+
+	or	r5,r5
 
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR FIXED_PRODUCT	; matrix->data[0][2] * vector->z
-	add	TEMP1,MV_ACCUMULATOR
+	add	r5,MV_ACCUMULATOR
+
+	or	r5,r5
 
 	addq	#4,MV_MATRIX_OFFSET
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	add	TEMP1,MV_ACCUMULATOR
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	add	r17,MV_ACCUMULATOR ; matrix->data[0][3] * 1
 	store	MV_ACCUMULATOR,(MV_RESULT)
+
+	move	r5,r5
 
 	move	MV_ACCUMULATOR,r20
 
@@ -544,28 +586,28 @@ _gpu_matrix_vector_product:
 	subq	#8,MV_VECTOR	; reset to vector->x
 	
 .calculate_y:
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR	FIXED_PRODUCT	; matrix->data[1][0] * vector->x
-	move	TEMP1,MV_ACCUMULATOR
+	move	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR FIXED_PRODUCT	; matrix->data[1][1] * vector->y
-	add	TEMP1,MV_ACCUMULATOR
+	add	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR FIXED_PRODUCT	; matrix->data[1][2] * vector->z
-	add	TEMP1,MV_ACCUMULATOR
+	add	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	add	TEMP1,MV_ACCUMULATOR
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	add	r17,MV_ACCUMULATOR
 	store	MV_ACCUMULATOR,(MV_RESULT)
 
 	move	MV_ACCUMULATOR,r21
@@ -575,34 +617,67 @@ _gpu_matrix_vector_product:
 	subq	#8,MV_VECTOR	; reset to vector->x
 
 .calculate_z:
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR	FIXED_PRODUCT	; matrix->data[1][0] * vector->x
-	move	TEMP1,MV_ACCUMULATOR
+	move	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR FIXED_PRODUCT	; matrix->data[1][1] * vector->y
-	add	TEMP1,MV_ACCUMULATOR
+	add	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	load	(MV_VECTOR),TEMP2
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
 	GPU_JSR FIXED_PRODUCT	; matrix->data[1][2] * vector->z
-	add	TEMP1,MV_ACCUMULATOR
+	add	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),TEMP1
-	add	TEMP1,MV_ACCUMULATOR
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	add	r17,MV_ACCUMULATOR
 	store	MV_ACCUMULATOR,(MV_RESULT)
 
-	move	MV_ACCUMULATOR,r22
+	addq	#4,MV_MATRIX_OFFSET
+	addq	#4,MV_RESULT
+	subq	#8,MV_VECTOR	; reset to vector->x
 
-	StopGPU
+.calculate_w:
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
+	GPU_JSR	FIXED_PRODUCT	; matrix->data[3][0] * vector->x
+	move	r5,MV_ACCUMULATOR
+
+	addq	#4,MV_MATRIX_OFFSET
+	addq	#4,MV_VECTOR
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
+	GPU_JSR FIXED_PRODUCT	; matrix->data[3][1] * vector->y
+	add	r5,MV_ACCUMULATOR
+
+	addq	#4,MV_MATRIX_OFFSET
+	addq	#4,MV_VECTOR
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	load	(MV_VECTOR),r18
+	GPU_JSR FIXED_PRODUCT	; matrix->data[3][2] * vector->z
+	add	r5,MV_ACCUMULATOR
+
+	addq	#4,MV_MATRIX_OFFSET
+	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
+	add	r17,MV_ACCUMULATOR ; matrix->data[3][3] * 1
+	store	MV_ACCUMULATOR,(MV_RESULT)
+	
+	move	MV_ACCUMULATOR,r22
 	nop
+	
+	GPU_REG_BANK_0
+	nop
+	nop
+	nop
+	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
@@ -612,8 +687,8 @@ FIXED_PRODUCT:
 	nop
 	nop
 			
-	;; Subroutine that multiplies two fixed-point numbers TEMP1 and TEMP2.
-	;; Result is returned in TEMP1.
+	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
+	;; Result is returned in r5.
 	FP_A     		.equr   r2
 	FP_B     		.equr   r3
 	FIXED_PRODUCT_RESULT    .equr   r4
@@ -630,13 +705,13 @@ FIXED_PRODUCT:
 	FP_STEP5_OPERAND_1	.equr	r28
 	FP_STEP5_OPERAND_2	.equr	r29
 	FP_STEP6_OPERAND_1	.equr	r30
-	FP_STEP6_OPERAND_2	.equr	r31
+	FP_STEP6_OPERAND_2	.equr	r19
 	
 	movei   #$0000FFFF,LOWORD_MASK
 	movei   #0,FIXED_PRODUCT_RESULT
 
-	movefa	r14,FP_A
-	movefa	r15,FP_B
+	movefa	r17,FP_A
+	movefa	r18,FP_B
 	
 	;; Step 1: A.i * B.f
 	move	FP_A,FP_STEP1_OPERAND_1
@@ -712,7 +787,7 @@ FIXED_PRODUCT:
 	nop
 	nop
 	nop
-	movefa    FIXED_PRODUCT_RESULT,TEMP1
+	movefa    FIXED_PRODUCT_RESULT,r5
 	nop
 	nop
 	nop
@@ -721,8 +796,13 @@ FIXED_PRODUCT:
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	.phrase
-stack:	dcb.l	32,0
-stack_end:
+stack_bank_0:	dcb.l	32,0
+stack_bank_0_end:
+
+	.phrase
+stack_bank_1:	dcb.l	32,0
+stack_bank_1_end:
+
 	
 	.68000
 _blit_triangle_end::

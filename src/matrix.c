@@ -139,10 +139,10 @@ void Matrix44_VectorProduct(Matrix44 *matrix, Vector3FX *vector, Vector4FX *dest
 
 	//const float w = 1;
 
-	destination->x = FIXED_MUL(matrix->data[0][0], vector->x) + FIXED_MUL(matrix->data[0][1], vector->y) + FIXED_MUL(matrix->data[0][2], vector->z) + matrix->data[0][3]; //* w = 1
-	destination->y = FIXED_MUL(matrix->data[1][0], vector->x) + FIXED_MUL(matrix->data[1][1], vector->y) + FIXED_MUL(matrix->data[1][2], vector->z) + matrix->data[1][3]; //* w = 1
-	destination->z = FIXED_MUL(matrix->data[2][0], vector->x) + FIXED_MUL(matrix->data[2][1], vector->y) + FIXED_MUL(matrix->data[2][2], vector->z) + matrix->data[2][3]; //* w = 1
-	destination->w = FIXED_MUL(matrix->data[3][0], vector->x) + FIXED_MUL(matrix->data[3][1], vector->y) + FIXED_MUL(matrix->data[3][2], vector->z) + matrix->data[3][3]; //* w = 1
+	destination->x = FIXED_MUL(matrix->data[0][0], vector->x) + FIXED_MUL(matrix->data[0][1], vector->y) + FIXED_MUL(matrix->data[0][2], vector->z) + matrix->data[0][3]; // * w = 1	
+	destination->y = FIXED_MUL(matrix->data[1][0], vector->x) + FIXED_MUL(matrix->data[1][1], vector->y) + FIXED_MUL(matrix->data[1][2], vector->z) + matrix->data[1][3]; // * w = 1
+	destination->z = FIXED_MUL(matrix->data[2][0], vector->x) + FIXED_MUL(matrix->data[2][1], vector->y) + FIXED_MUL(matrix->data[2][2], vector->z) + matrix->data[2][3]; // * w = 1
+	destination->w = FIXED_MUL(matrix->data[3][0], vector->x) + FIXED_MUL(matrix->data[3][1], vector->y) + FIXED_MUL(matrix->data[3][2], vector->z) + matrix->data[3][3]; // * w = 1
 }
 
 //TODO: Find a better place for this.
