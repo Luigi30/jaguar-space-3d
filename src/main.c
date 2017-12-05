@@ -335,23 +335,20 @@ int main() {
 		object_M = m;
 		object_Triangle = cube.triangles[triNum];
 		GPU_PROJECT_AND_DRAW_TRIANGLE();
+		jag_gpu_wait();
 	
+	/*
       for(int i=0;i<3;i++){
+		 
 		Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &projectedPoints[i]);
 		
 		MMIO32(0x60000) = (uint32_t)&projectedPoints[i];
 		
-		MMIO32(0x60010 + i*0x10) = projectedPoints[i].x;
-		MMIO32(0x60014 + i*0x10) = projectedPoints[i].y;
-		MMIO32(0x60018 + i*0x10) = projectedPoints[i].z;
-		MMIO32(0x6001C + i*0x10) = projectedPoints[i].w;
-
 		//Perspective divide.
 		projectedPoints[i].x = FIXED_DIV(projectedPoints[i].x, projectedPoints[i].w);
 		projectedPoints[i].y = FIXED_DIV(projectedPoints[i].y, projectedPoints[i].w);
 		projectedPoints[i].z = FIXED_DIV(projectedPoints[i].z, projectedPoints[i].w);
 
-		/*
 		//Translate the points to screen coordinates.
 		projectedPoints[i].x = FIXED_MUL(projectedPoints[i].x, INT_TO_FIXED(160));
 		projectedPoints[i].y = FIXED_MUL(projectedPoints[i].y, INT_TO_FIXED(100));
@@ -361,14 +358,16 @@ int main() {
 
 		transformedVertexList[i].x = projectedPoints[i].x;
 		transformedVertexList[i].y = projectedPoints[i].y;
-		*/
+		
+		MMIO32(0x60010 + i*0x10) = projectedPoints[i].x;
+		MMIO32(0x60014 + i*0x10) = projectedPoints[i].y;
+		MMIO32(0x60018 + i*0x10) = projectedPoints[i].z;
+		MMIO32(0x6001C + i*0x10) = projectedPoints[i].w;
 
-		/*
 		MMIO32(0x60020 + (0x10*i)) = cube.triangles[triNum][i].x;
 		MMIO32(0x60024 + (0x10*i)) = cube.triangles[triNum][i].y;
 		MMIO32(0x60028 + (0x10*i)) = cube.triangles[triNum][i].z;
 		MMIO32(0x6002C + (0x10*i)) = 0xCCCCCCCC;
-		*/
 		}
 
 		/*
@@ -382,10 +381,7 @@ int main() {
 		MMIO32(0x60080) = projectedPoints[2].x; MMIO32(0x60084) = projectedPoints[2].y; MMIO32(0x60088) = projectedPoints[2].z; MMIO32(0x6008C) = projectedPoints[2].w;
 		*/
 
-		while(true) {};
-		
-		gpu_blit_triangle(transformedVertexList, 255);
-		jag_gpu_wait();
+		//gpu_blit_triangle(transformedVertexList, 255);
     }
 	
     //skunkCONSOLEWRITE("Frame\n");

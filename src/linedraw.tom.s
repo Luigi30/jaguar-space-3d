@@ -98,11 +98,11 @@ do_blit_triangle:
 	
 .draw_line_1:
 	movei	#0,r14
-	movei	#12,r15
+	movei	#16,r15
 	load	(r14+PTR_VERTEXES),LINE_X1
 	load	(r15+PTR_VERTEXES),LINE_X2
 	movei	#4,r14
-	movei	#16,r15
+	movei	#20,r15
 	load	(r14+PTR_VERTEXES),LINE_Y1
 	load	(r15+PTR_VERTEXES),LINE_Y2
 
@@ -114,12 +114,12 @@ do_blit_triangle:
 	GPU_JSR	#do_blit_line
 
 .draw_line_2:
-	movei	#24,r14
-	movei	#0,r15
+	movei	#16,r14
+	movei	#32,r15
 	load	(r14+PTR_VERTEXES),LINE_X1
 	load	(r15+PTR_VERTEXES),LINE_X2
-	movei	#28,r14
-	movei	#4,r15
+	movei	#20,r14
+	movei	#36,r15
 	load	(r14+PTR_VERTEXES),LINE_Y1
 	load	(r15+PTR_VERTEXES),LINE_Y2
 
@@ -131,12 +131,12 @@ do_blit_triangle:
 	GPU_JSR	#do_blit_line
 
 .draw_line_3:
-	movei	#12,r14
-	movei	#24,r15
+	movei	#32,r14
+	movei	#0,r15
 	load	(r14+PTR_VERTEXES),LINE_X1
 	load	(r15+PTR_VERTEXES),LINE_X2
-	movei	#16,r14
-	movei	#28,r15
+	movei	#36,r14
+	movei	#4,r15
 	load	(r14+PTR_VERTEXES),LINE_Y1
 	load	(r15+PTR_VERTEXES),LINE_Y2
 
@@ -513,6 +513,7 @@ _gpu_project_and_draw_triangle::
 
 	GPU_JSR	_gpu_matrix_vector_product
 
+.perspective_divide:
 	;; Now we have the NDC coordinates for our three triangles.
 	;; Perform the perspective divide on each triangle.
 	movei	#_gpu_tri_point_1,TEMP1
@@ -524,6 +525,58 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
+.make_screen_coordinates:
+	movei	#_gpu_tri_point_1,r10
+	movei	#_gpu_tri_point_2,r11
+	movei	#_gpu_tri_point_3,r12
+
+	;; Multiply X coordinates by 160 and add 160
+	load	(r10),r17
+	movei	#$00A00000,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r18,r5
+	store	r5,(r10)
+
+	load	(r11),r17
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r18,r5
+	store	r5,(r11)
+
+	load	(r12),r17
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r18,r5
+	store	r5,(r12)
+
+	;; Multiply Y coordinates by 100 and add 100
+	addq	#4,r10
+	addq	#4,r11
+	addq	#4,r12
+	
+	load	(r10),r17
+	movei	#$00640000,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r18,r5
+	store	r5,(r10)
+
+	load	(r11),r17
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r18,r5
+	store	r5,(r11)
+
+	load	(r12),r17
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r18,r5
+	store	r5,(r12)
+
+	movei	#_gpu_tri_point_1,TEMP1
+	movei	#_ptr_vertex_array,TEMP2
+	store	TEMP1,(TEMP2)
+
+	;; And blit.
+	movei	#_blit_triangle,r3
+	jump	t,(r3)
+	nop
+	
 	StopGPU
 	nop
 
@@ -847,15 +900,6 @@ _gpu_matrix_vector_product:
 	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.phrase
-FIXED_PRODUCT:
-	GPU_REG_BANK_0
-	nop
-	nop
-	nop
-			
-	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
-	;; Result is returned in r5.
 	FP_A     		.equr   r2
 	FP_B     		.equr   r3
 	FIXED_PRODUCT_RESULT    .equr   r4
@@ -874,6 +918,15 @@ FIXED_PRODUCT:
 	FP_STEP6_OPERAND_1	.equr	r30
 	FP_STEP6_OPERAND_2	.equr	r19
 	
+	.phrase
+FIXED_PRODUCT:
+	GPU_REG_BANK_0
+	nop
+	nop
+	nop
+			
+	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
+	;; Result is returned in r5.	
 	movei   #$0000FFFF,LOWORD_MASK
 	movei   #0,FIXED_PRODUCT_RESULT
 
@@ -951,6 +1004,103 @@ FIXED_PRODUCT:
 
 .done:
 	GPU_REG_BANK_1
+	nop
+	nop
+	nop
+	movefa    FIXED_PRODUCT_RESULT,r5
+	nop
+	nop
+	nop
+	GPU_RTS
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.phrase
+FIXED_PRODUCT_BANK_1:
+	GPU_REG_BANK_1
+	nop
+	nop
+	nop
+			
+	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
+	;; Result is returned in r5.
+	
+	movei   #$0000FFFF,LOWORD_MASK
+	movei   #0,FIXED_PRODUCT_RESULT
+
+	movefa	r17,FP_A
+	movefa	r18,FP_B
+	
+	;; Step 1: A.i * B.f
+	move	FP_A,FP_STEP1_OPERAND_1
+	move	FP_B,FP_STEP1_OPERAND_2
+	shrq	#16,FP_STEP1_OPERAND_1
+	and	LOWORD_MASK,FP_STEP1_OPERAND_2
+	mult	FP_STEP1_OPERAND_1,FP_STEP1_OPERAND_2
+	
+	;; Step 2: A.f * B.i
+	move  	FP_A,FP_STEP2_OPERAND_1
+	move  	FP_B,FP_STEP2_OPERAND_2
+	and     LOWORD_MASK,FP_STEP2_OPERAND_1
+	shrq    #16,FP_STEP2_OPERAND_2
+	mult    FP_STEP2_OPERAND_1,FP_STEP2_OPERAND_2
+
+	;; Pipeline step 1
+	add	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
+	
+	;; Step 3: (A.i * B.i) << 16
+	move	FP_A,FP_STEP3_OPERAND_1
+	move  	FP_B,FP_STEP3_OPERAND_2
+	shrq    #16,FP_STEP3_OPERAND_1
+	shrq    #16,FP_STEP3_OPERAND_2
+	mult    FP_STEP3_OPERAND_1,FP_STEP3_OPERAND_2
+	shlq    #16,FP_STEP3_OPERAND_2
+
+	;; Pipeline step 2
+	add     FP_STEP2_OPERAND_2,FIXED_PRODUCT_RESULT
+	
+	;; Step 4: (A.f * B.f) >> 16
+	move  	FP_A,FP_STEP4_OPERAND_1
+	move  	FP_B,FP_STEP4_OPERAND_2
+	and     LOWORD_MASK,FP_STEP4_OPERAND_1
+	and     LOWORD_MASK,FP_STEP4_OPERAND_2
+	mult    FP_STEP4_OPERAND_1,FP_STEP4_OPERAND_2
+	shrq    #16,FP_STEP4_OPERAND_2
+
+	;; Pipeline step 3
+	add     FP_STEP3_OPERAND_2,FIXED_PRODUCT_RESULT
+	
+.neg_a_check:           ; Is A negative? Add (-B.f) << 16 if so.
+	move  	FP_A,FP_STEP5_OPERAND_1
+	move	FP_B,FP_STEP5_OPERAND_2
+	and     LOWORD_MASK,FP_STEP5_OPERAND_2 ; get B.f
+	btst    #31,FP_STEP5_OPERAND_1 ; is A a negative number?
+	jr      eq,.neg_b_check
+	nop
+	
+	neg     FP_STEP5_OPERAND_2
+	shlq    #16,FP_STEP5_OPERAND_2
+	add     FP_STEP5_OPERAND_2,FIXED_PRODUCT_RESULT
+
+.neg_b_check:           ; Is B negative? Add (-A.f) << 16 if so.
+	move 	FP_A,FP_STEP6_OPERAND_1
+	move	FP_B,FP_STEP6_OPERAND_2
+	and     LOWORD_MASK,FP_STEP6_OPERAND_1 ; get A.f
+	btst    #31,FP_STEP6_OPERAND_2 ; is B a negative number?
+	jr      eq,.accumulate
+	nop
+	
+	neg     FP_STEP6_OPERAND_1
+	shlq    #16,FP_STEP6_OPERAND_1
+	add     FP_STEP6_OPERAND_1,FIXED_PRODUCT_RESULT
+
+.accumulate:
+	add     FP_STEP4_OPERAND_2,FIXED_PRODUCT_RESULT
+	nop
+	nop
+	nop
+
+.done:
+	GPU_REG_BANK_0
 	nop
 	nop
 	nop
