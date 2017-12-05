@@ -340,13 +340,18 @@ int main() {
 		Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &projectedPoints[i]);
 		
 		MMIO32(0x60000) = (uint32_t)&projectedPoints[i];
+		
+		MMIO32(0x60010 + i*0x10) = projectedPoints[i].x;
+		MMIO32(0x60014 + i*0x10) = projectedPoints[i].y;
+		MMIO32(0x60018 + i*0x10) = projectedPoints[i].z;
+		MMIO32(0x6001C + i*0x10) = projectedPoints[i].w;
 
-		/*
 		//Perspective divide.
 		projectedPoints[i].x = FIXED_DIV(projectedPoints[i].x, projectedPoints[i].w);
 		projectedPoints[i].y = FIXED_DIV(projectedPoints[i].y, projectedPoints[i].w);
 		projectedPoints[i].z = FIXED_DIV(projectedPoints[i].z, projectedPoints[i].w);
 
+		/*
 		//Translate the points to screen coordinates.
 		projectedPoints[i].x = FIXED_MUL(projectedPoints[i].x, INT_TO_FIXED(160));
 		projectedPoints[i].y = FIXED_MUL(projectedPoints[i].y, INT_TO_FIXED(100));
