@@ -515,23 +515,36 @@ _gpu_project_and_draw_triangle::
 
 	;; Now we have the NDC coordinates for our three triangles.
 	;; Perform the perspective divide on each triangle.
-	movei	#1,TEMP1
+	movei	#_gpu_tri_point_1,TEMP1
+	GPU_JSR	_gpu_perspective_divide
+
+	movei	#_gpu_tri_point_2,TEMP1
+	GPU_JSR	_gpu_perspective_divide
+
+	movei	#_gpu_tri_point_3,TEMP1
+	GPU_JSR	_gpu_perspective_divide
+
+	StopGPU
+	nop
+
+;;; Perspective divide function.
+;;; Takes a pointer to a Vector4FX in TEMP1 and stores the result back to it.
+	.phrase
+_gpu_perspective_divide:
+	move	TEMP1,r10	; store the Vector4FX pointer
+
+	movei	#1,TEMP1	; set the divide unit for fixed-point
 	movei	#G_DIVCTRL,TEMP2
 	store	TEMP1,(TEMP2)
 	nop
-
+	
 	movei	#$FFFFFFFF,r29	; -1.0
 	movei	#$7FFFFFFF,r28	; xor value for negating a quotient
 	movei	#$00010000,r27	; fixed-point 1.0
 
-	;; TODO: Fake signed division.
-	;; The current problem is we don't handle a signed divisor.
-	;; Probably just have to apply the signed dividend thingy below to it.
-	;; https://homepage.divms.uiowa.edu/~jones/bcd/divide.html#signed
-	movei	#_gpu_tri_point_1,r10
-	movei	#_gpu_tri_point_1,TEMP1
+	move	r10,TEMP1
 	load	(TEMP1),TEMP1	; grab the X coordinate
-	movei	#_gpu_tri_point_1,TEMP2
+	move	r10,TEMP2
 	addq	#12,TEMP2
 	load	(TEMP2),TEMP2
 
@@ -555,12 +568,8 @@ _gpu_project_and_draw_triangle::
 	movei	#1,DIVISOR_IS_NEGATIVE
 
 .do_divide_x:
-	move	TEMP1,r20
-	move	TEMP2,r21
-	
 	div	TEMP2,TEMP1	; TEMP1 = TEMP1 / TEMP2
 	or	TEMP1,TEMP1
-	move	TEMP1,r22
 
 	movei	#0,r4
 	add	DIVISOR_IS_NEGATIVE,r4
@@ -572,18 +581,15 @@ _gpu_project_and_draw_triangle::
 	bset	#31,TEMP1
 	xor	r28,TEMP1
 	addq	#1,TEMP1
-	move	TEMP1,r22
 
 .store_divided_x:
 	store	TEMP1,(r10)
 	
 .perspective_divide_y:
 	addq	#4,r10
-	movei	#_gpu_tri_point_1,TEMP1
-	addq	#4,TEMP1
-	load	(TEMP1),TEMP1	; grab the Y coordinate
-	movei	#_gpu_tri_point_1,TEMP2
-	addq	#12,TEMP2
+	load	(r10),TEMP1	; grab the Y coordinate
+	move	r10,TEMP2
+	addq	#8,TEMP2	; grab the W coordinate
 	load	(TEMP2),TEMP2
 
 .test_dividend_sign_y:
@@ -605,13 +611,9 @@ _gpu_project_and_draw_triangle::
 	addq    #1,TEMP2
 	movei	#1,DIVISOR_IS_NEGATIVE
 
-.do_divide_y:
-	move	TEMP1,r20
-	move	TEMP2,r21
-	
+.do_divide_y:	
 	div	TEMP2,TEMP1	; TEMP1 = TEMP1 / TEMP2
 	or	TEMP1,TEMP1
-	move	TEMP1,r22
 
 	movei	#0,r4
 	add	DIVISOR_IS_NEGATIVE,r4
@@ -623,18 +625,15 @@ _gpu_project_and_draw_triangle::
 	bset	#31,TEMP1
 	xor	r28,TEMP1
 	addq	#1,TEMP1
-	move	TEMP1,r22
 
 .store_divided_y:
 	store	TEMP1,(r10)
 
 .perspective_divide_z:
 	addq	#4,r10
-	movei	#_gpu_tri_point_1,TEMP1
-	addq	#8,TEMP1
-	load	(TEMP1),TEMP1	; grab the Z coordinate
-	movei	#_gpu_tri_point_1,TEMP2
-	addq	#12,TEMP2
+	load	(r10),TEMP1	; grab the Z coordinate
+	move	r10,TEMP2
+	addq	#4,TEMP2	; grab the W coordinate
 	load	(TEMP2),TEMP2
 
 .test_dividend_sign_z:
@@ -657,12 +656,8 @@ _gpu_project_and_draw_triangle::
 	movei	#1,DIVISOR_IS_NEGATIVE
 
 .do_divide_z:
-	move	TEMP1,r20
-	move	TEMP2,r21
-	
 	div	TEMP2,TEMP1	; TEMP1 = TEMP1 / TEMP2
 	or	TEMP1,TEMP1
-	move	TEMP1,r22
 
 	movei	#0,r4
 	add	DIVISOR_IS_NEGATIVE,r4
@@ -674,7 +669,6 @@ _gpu_project_and_draw_triangle::
 	bset	#31,TEMP1
 	xor	r28,TEMP1
 	addq	#1,TEMP1
-	move	TEMP1,r22
 
 .store_divided_z:
 	store	TEMP1,(r10)
@@ -684,8 +678,7 @@ _gpu_project_and_draw_triangle::
 	store	TEMP1,(TEMP2)
 	nop
 	
-	StopGPU
-	nop
+	GPU_RTS
 _gpu_project_and_draw_triangle_end::
 
 	.phrase
