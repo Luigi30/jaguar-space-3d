@@ -9,7 +9,7 @@
 Vector3FX cameraTranslation;
 
 Matrix44 *object_M;
-Vector3FX *object_Triangle;
+Vector3FX **object_Triangle;
 
 typedef struct shape_t {
   Vector3FX translation, rotation, scale;
@@ -331,60 +331,21 @@ int main() {
 	/* TODO: Perspective transformation. The vertex coordinates aren't correct after the VectorProduct operation? */
 	Vector4FX projectedPoints[3];
 	
+	line_clut_color = 255;
+	
+	object_M = m;
+	object_Triangle = cube.triangles;
+	GPU_PROJECT_AND_DRAW_TRIANGLE();
+	jag_gpu_wait();
+	
+	/*
     for(int triNum=0; triNum<11; triNum++){	
 		object_M = m;
 		object_Triangle = cube.triangles[triNum];
 		GPU_PROJECT_AND_DRAW_TRIANGLE();
 		jag_gpu_wait();
-	
-	/*
-      for(int i=0;i<3;i++){
-		 
-		Matrix44_VectorProduct(m, &cube.triangles[triNum][i], &projectedPoints[i]);
-		
-		MMIO32(0x60000) = (uint32_t)&projectedPoints[i];
-		
-		//Perspective divide.
-		projectedPoints[i].x = FIXED_DIV(projectedPoints[i].x, projectedPoints[i].w);
-		projectedPoints[i].y = FIXED_DIV(projectedPoints[i].y, projectedPoints[i].w);
-		projectedPoints[i].z = FIXED_DIV(projectedPoints[i].z, projectedPoints[i].w);
-
-		//Translate the points to screen coordinates.
-		projectedPoints[i].x = FIXED_MUL(projectedPoints[i].x, INT_TO_FIXED(160));
-		projectedPoints[i].y = FIXED_MUL(projectedPoints[i].y, INT_TO_FIXED(100));
-
-		projectedPoints[i].x += INT_TO_FIXED(160);
-		projectedPoints[i].y += INT_TO_FIXED(100);
-
-		transformedVertexList[i].x = projectedPoints[i].x;
-		transformedVertexList[i].y = projectedPoints[i].y;
-		
-		MMIO32(0x60010 + i*0x10) = projectedPoints[i].x;
-		MMIO32(0x60014 + i*0x10) = projectedPoints[i].y;
-		MMIO32(0x60018 + i*0x10) = projectedPoints[i].z;
-		MMIO32(0x6001C + i*0x10) = projectedPoints[i].w;
-
-		MMIO32(0x60020 + (0x10*i)) = cube.triangles[triNum][i].x;
-		MMIO32(0x60024 + (0x10*i)) = cube.triangles[triNum][i].y;
-		MMIO32(0x60028 + (0x10*i)) = cube.triangles[triNum][i].z;
-		MMIO32(0x6002C + (0x10*i)) = 0xCCCCCCCC;
-		}
-
-		/*
-		MMIO32(0x60000) = (uint32_t)projectedPoints;
-		MMIO32(0x60004) = (uint32_t)m;
-		MMIO32(0x60008) = (uint32_t)cube.triangles[triNum];
-		MMIO32(0x6000C) = (uint32_t)mPerspective;
-
-		MMIO32(0x60060) = projectedPoints[0].x; MMIO32(0x60064) = projectedPoints[0].y; MMIO32(0x60068) = projectedPoints[0].z; MMIO32(0x6006C) = projectedPoints[0].w;
-		MMIO32(0x60070) = projectedPoints[1].x; MMIO32(0x60074) = projectedPoints[1].y; MMIO32(0x60078) = projectedPoints[1].z; MMIO32(0x6007C) = projectedPoints[1].w;
-		MMIO32(0x60080) = projectedPoints[2].x; MMIO32(0x60084) = projectedPoints[2].y; MMIO32(0x60088) = projectedPoints[2].z; MMIO32(0x6008C) = projectedPoints[2].w;
-		*/
-
-		//gpu_blit_triangle(transformedVertexList, 255);
-    }
-	
-    //skunkCONSOLEWRITE("Frame\n");
+	}
+	*/
 
 	/*
     sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);

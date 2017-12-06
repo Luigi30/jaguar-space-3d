@@ -56,7 +56,7 @@ extern Matrix44 *gpu_ptr_transformation_matrix;
 
 /* Object drawing */
 extern Matrix44 *object_M;
-extern Vector3FX *object_Triangle;
+extern Vector3FX **object_Triangle;
 
 void GPU_PROJECT_AND_DRAW_TRIANGLE();
 

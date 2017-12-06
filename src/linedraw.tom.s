@@ -39,7 +39,7 @@
 	B_A1_STEP	.equr	r28
 	B_B_PATD	.equr	r29
 	B_B_COUNT	.equr	r30
-	B_B_CMD		.equr	r31
+	B_B_CMD		.equr	r8
 
 	.include "regmacros.inc"
 
@@ -114,6 +114,9 @@ do_blit_triangle:
 	GPU_JSR	#do_blit_line
 
 .draw_line_2:
+	movei	#_ptr_vertex_array,PTR_VERTEXES
+ 	load	(PTR_VERTEXES),PTR_VERTEXES
+	
 	movei	#16,r14
 	movei	#32,r15
 	load	(r14+PTR_VERTEXES),LINE_X1
@@ -131,6 +134,9 @@ do_blit_triangle:
 	GPU_JSR	#do_blit_line
 
 .draw_line_3:
+	movei	#_ptr_vertex_array,PTR_VERTEXES
+ 	load	(PTR_VERTEXES),PTR_VERTEXES
+	
 	movei	#32,r14
 	movei	#0,r15
 	load	(r14+PTR_VERTEXES),LINE_X1
@@ -145,10 +151,10 @@ do_blit_triangle:
 	moveta	LINE_Y1,LINE_Y1
 	moveta	LINE_Y2,LINE_Y2
 
-	GPU_JSR	#do_blit_line	
+	GPU_JSR	#do_blit_line
 
-	StopGPU
-	nop
+	GPU_REG_BANK_0
+	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; do_blit_line
@@ -438,6 +444,7 @@ blit_line_done:
 	
 	.phrase
 _ptr_vertex_array::		dcb.l	1,0
+_ptr_current_triangle:		dcb.l	1,0
 	.phrase
 _gpu_register_dump::		dcb.l	32,0
 
@@ -466,8 +473,15 @@ _gpu_project_and_draw_triangle::
 	nop
 	
 	movei	#stack_bank_0_end,SP
-	
+
 	;; Get matrix-vector product of each of the points.
+.triangle_loop:
+	;; Dereference the triangle pointer and get the triangle.
+	movei	#_object_Triangle,r3
+	movei	#_ptr_current_triangle,r4
+	load	(r3),r5
+	load	(r5),r6
+	store	r6,(r4)
 
 .triangle1:
 	movei	#_object_M,TEMP1
@@ -475,7 +489,7 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_mvp_matrix_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 
-	movei	#_object_Triangle,TEMP1	;ptr to the first triangle's coords
+	movei	#_ptr_current_triangle,TEMP1	;ptr to the first triangle's coords
 	load	(TEMP1),TEMP1
 	movei	#_gpu_mvp_vector_ptr,TEMP2
 	store	TEMP1,(TEMP2)
@@ -487,7 +501,7 @@ _gpu_project_and_draw_triangle::
 	GPU_JSR	_gpu_matrix_vector_product
 
 .triangle2:
-	movei	#_object_Triangle,TEMP1	;ptr to the first triangle's coords
+	movei	#_ptr_current_triangle,TEMP1	;ptr to the first triangle's coords
 	load	(TEMP1),TEMP1
 	addq	#12,TEMP1	;advance to triangle #2
 	movei	#_gpu_mvp_vector_ptr,TEMP2
@@ -500,7 +514,7 @@ _gpu_project_and_draw_triangle::
 	GPU_JSR	_gpu_matrix_vector_product
 
 .triangle3:
-	movei	#_object_Triangle,TEMP1	;ptr to the first triangle's coords
+	movei	#_ptr_current_triangle,TEMP1	;ptr to the first triangle's coords
 	load	(TEMP1),TEMP1
 	addq	#12,TEMP1	;advance to triangle #2
 	addq	#12,TEMP1	;advance to triangle #3
@@ -573,8 +587,17 @@ _gpu_project_and_draw_triangle::
 	store	TEMP1,(TEMP2)
 
 	;; And blit.
-	movei	#_blit_triangle,r3
-	jump	t,(r3)
+	GPU_JSR	#_blit_triangle
+
+	movei	#_object_Triangle,r3
+	load	(r3),r4
+	addq	#4,r4
+	store	r4,(r3)
+
+	load	(r4),r5
+	movei	#.triangle_loop,r3
+	cmpq	#0,r5	; if the next triangle is a null pointer, we're done
+	jump	ne,(r3)
 	nop
 	
 	StopGPU
