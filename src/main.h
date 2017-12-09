@@ -26,6 +26,11 @@
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 200
 
+typedef struct shape_t {
+  Vector3FX translation, rotation, scale;
+  Vector3FX **triangles;	//Pointer to the triangles array of the shape.
+} Shape;
+
 /* background pixel buffers - 8bpp */
 uint8_t background_frame_0[SCREEN_WIDTH * SCREEN_HEIGHT];
 uint8_t background_frame_1[SCREEN_WIDTH * SCREEN_HEIGHT];

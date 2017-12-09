@@ -463,6 +463,7 @@ _gpu_tri_point_3:	dcb.l	4,0
 	
 	.globl	_object_M
 	.globl	_object_Triangle
+	.globl	_shape_Current
 
 	DIVISOR_IS_NEGATIVE	.equr	r24
 	DIVIDEND_IS_NEGATIVE	.equr	r25

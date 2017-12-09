@@ -6,6 +6,7 @@
 	.gpu
 	.include "jaguar.inc"
 	.include "regmacros.inc"
+	.include "3d_types.risc.inc"
 
 	.globl	_mTranslation
 	.globl	_mRotation
@@ -462,7 +463,7 @@ _gpu_accumulator:	dc.l	0
 	.phrase
 ;;; Construct a translation matrix for a given gpu_matrix_vector. Store it to [gpu_matrix_ptr_result].
 ;;; Can run in either bank.
-_gpu_matrix_translation::
+_gpu_matrix_translation:
 	TRANS_PTR_TRANSLATION	.equr	r3
 	TRANS_X			.equr	r4
 	TRANS_Y			.equr	r5
@@ -477,7 +478,7 @@ _gpu_matrix_translation::
 	movei	#_gpu_matrix_ptr_result,TRANS_PTR_MATRIX
 	load	(TRANS_PTR_MATRIX),TRANS_PTR_MATRIX	;dereference the pointer
 	
-	movei	#_gpu_matrix_vector,TRANS_PTR_TRANSLATION
+	movei	#_gpu_matrix_ptr_vector,TRANS_PTR_TRANSLATION
 	load	(TRANS_PTR_TRANSLATION),TRANS_X
 	addq	#4,TRANS_PTR_TRANSLATION
 	load	(TRANS_PTR_TRANSLATION),TRANS_Y
@@ -524,9 +525,33 @@ _gpu_matrix_translation::
 _gpu_matrix_translation_end::
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.globl	_shape_Current
+	
 	.phrase
 _gpu_build_transformation_matrix::
 	GPU_REG_BANK_1		; ensure we start in register bank 1
+
+	movei	#stack_end,r31	; set up the stack
+
+	;; Reset _m and _mModel
+	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_identity,#_m
+	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_identity,#_mModel
+
+	;; Create the model's translation matrix.
+	movei	#_shape_Current,r10
+	load	(r10),r10		; get the shape pointer
+	movei	#SHAPE_TRANSLATION,r14 	; offset of the translation vector
+	load	(r14+r10),r11	; get the pointer to the translation vector
+
+	movei	#_mTranslation,r3
+	load	(r3),r3
+	movei	#_gpu_matrix_ptr_result,r4
+	store	r3,(r4)
+	
+	movei	#_gpu_matrix_ptr_vector,r5
+	store	r11,(r5)
+
+	GPU_JSR	#_gpu_matrix_translation
 	
 	;; Perform translation * rotation = mModel
 	;; Perform mPerspective * mView * mModel = m
@@ -610,6 +635,12 @@ _gpu_matrix_vector:		dcb.l	4,0 ; storage for a Vector3FX or Vector4FX
 _gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result
 	.phrase
 _gpu_pc_result_ptr:		dc.l	0
+
+	.phrase
+_gpu_matrix_identity:		dc.l	$00010000,$00000000,$00000000,$00000000
+				dc.l	$00000000,$00010000,$00000000,$00000000
+				dc.l	$00000000,$00000000,$00010000,$00000000
+				dc.l	$00000000,$00000000,$00000000,$00010000
 
 	;; 64-byte stack
 	.phrase

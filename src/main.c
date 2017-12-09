@@ -11,10 +11,7 @@ Vector3FX cameraTranslation;
 Matrix44 *object_M;
 Vector3FX **object_Triangle;
 
-typedef struct shape_t {
-  Vector3FX translation, rotation, scale;
-  Vector3FX **triangles;	//Pointer to the triangles array of the shape.
-} Shape;
+Shape *shape_Current;
 
 extern uint32_t gpu_register_dump[32];
 
@@ -246,8 +243,6 @@ int main() {
 	skunkCONSOLEWRITE("Building rotation matrix\n");
 	Matrix44_Identity(mRotation);
 	Matrix44_Rotation(cube.rotation, mRotation);
-	
-	jag_dsp_wait();
     
     framecounter = (framecounter + 1) % 60;
     framenumber++;
@@ -320,14 +315,11 @@ int main() {
 	}
 	  
     stick0_lastread = stick0;
-	
-	//skunkCONSOLEWRITE("translation\n");
-    Matrix44_Translation(cube.translation, mTranslation);
-    jag_dsp_wait();
-	
-	Matrix44_Identity(m);
-	Matrix44_Identity(mModel);
 
+	shape_Current = &cube;
+	
+	jag_dsp_wait();
+	
 	GPU_BUILD_TRANSFORMATION_START();
 	jag_gpu_wait();	
 	
@@ -342,6 +334,7 @@ int main() {
 	
 	object_M = m;
 	object_Triangle = cube.triangles;
+	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
 	
