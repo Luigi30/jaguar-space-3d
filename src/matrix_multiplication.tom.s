@@ -27,7 +27,31 @@
 	movei	#\offset_left,OFFSET_MATRIX_LEFT
 	movei	#\offset_right,OFFSET_MATRIX_RIGHT
 
-	GPU_JSR	FIXED_PRODUCT
+	GPU_JSR	FIXED_PRODUCT_MMULT
+	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
+	
+	.endm
+
+	.macro MATRIX_MULT_AND_ACC_ROW	acc_num, offset_left, offset_right
+	
+	movei	#\offset_left,OFFSET_MATRIX_LEFT
+	movei	#\offset_right,OFFSET_MATRIX_RIGHT
+	GPU_JSR	FIXED_PRODUCT_MMULT
+	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
+
+	addq	#4,OFFSET_MATRIX_LEFT
+	addq	#16,OFFSET_MATRIX_RIGHT
+	GPU_JSR	FIXED_PRODUCT_MMULT
+	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
+
+	addq	#4,OFFSET_MATRIX_LEFT
+	addq	#16,OFFSET_MATRIX_RIGHT
+	GPU_JSR	FIXED_PRODUCT_MMULT
+	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
+
+	addq	#4,OFFSET_MATRIX_LEFT
+	addq	#16,OFFSET_MATRIX_RIGHT
+	GPU_JSR	FIXED_PRODUCT_MMULT
 	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
 	
 	.endm
@@ -128,7 +152,7 @@ _gpu_matrix_multiply::
 	STOP_GPU_AT_END		.equr	r30
 
 	GPU_REG_BANK_1
-	movei	#stack_end,SP
+	movei	#stack_bank_1_end,SP
 	movei	#1,STOP_GPU_AT_END
 
 	.phrase
@@ -147,160 +171,113 @@ _gpu_matrix_multiply_jsr_entry:
 	
 	;; Row 0 Column 0
 .r0c0:	
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 0, 0  ; accumulator number, left byte offset, right byte offset
-	MATRIX_MULT_AND_ACC	1, 4, 16 ;
-	MATRIX_MULT_AND_ACC	1, 8, 32 ;
-	MATRIX_MULT_AND_ACC	1, 12,48 ;
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 0, 0	 ; accumulator number, left byte offset, right byte offset
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 	
 	;; Row 0 Column 1
 .r0c1:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 0, 4
-	MATRIX_MULT_AND_ACC	2, 4, 20
-	MATRIX_MULT_AND_ACC	2, 8, 36
-	MATRIX_MULT_AND_ACC	2, 12,52
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 0, 4	 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 0 Column 2
 .r0c2:
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 0, 8
-	MATRIX_MULT_AND_ACC	1, 4, 24
-	MATRIX_MULT_AND_ACC	1, 8, 40
-	MATRIX_MULT_AND_ACC	1, 12,56
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 0, 8	 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 	
 	;; Row 0 Column 3
 .r0c3:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 0, 12 ; accumulator number, left byte offset, right byte offset
-	MATRIX_MULT_AND_ACC	2, 4, 28 ;
-	MATRIX_MULT_AND_ACC	2, 8, 44 ;
-	MATRIX_MULT_AND_ACC	2, 12,60 ;
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 0, 12 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 1 Column 0
 .r1c0:	
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 16, 0  ; accumulator number, left byte offset, right byte offset
-	MATRIX_MULT_AND_ACC	1, 20, 16 ;
-	MATRIX_MULT_AND_ACC	1, 24, 32 ;
-	MATRIX_MULT_AND_ACC	1, 28, 48 ;
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 16, 0 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 
 	;; Row 1 Column 1
 .r1c1:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 16, 4
-	MATRIX_MULT_AND_ACC	2, 20, 20
-	MATRIX_MULT_AND_ACC	2, 24, 36
-	MATRIX_MULT_AND_ACC	2, 28, 52
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 16, 4 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 1 Column 2
 .r1c2:
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 16, 8
-	MATRIX_MULT_AND_ACC	1, 20, 24
-	MATRIX_MULT_AND_ACC	1, 24, 40
-	MATRIX_MULT_AND_ACC	1, 28, 56
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 16, 8 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 
 	;; Row 1 Column 3
 .r1c3:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 16, 12
-	MATRIX_MULT_AND_ACC	2, 20, 28
-	MATRIX_MULT_AND_ACC	2, 24, 44
-	MATRIX_MULT_AND_ACC	2, 28, 60
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 16, 12 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 2 Column 0
 .r2c0:	
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 32, 0  ; accumulator number, left byte offset, right byte offset
-	MATRIX_MULT_AND_ACC	1, 36, 16 ;
-	MATRIX_MULT_AND_ACC	1, 40, 32 ;
-	MATRIX_MULT_AND_ACC	1, 44, 48 ;
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 32, 0 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 
 	;; Row 2 Column 1
 .r2c1:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 32, 4
-	MATRIX_MULT_AND_ACC	2, 36, 20
-	MATRIX_MULT_AND_ACC	2, 40, 36
-	MATRIX_MULT_AND_ACC	2, 44, 52
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 32, 4 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 2 Column 2
 .r2c2:
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 32, 8
-	MATRIX_MULT_AND_ACC	1, 36, 24
-	MATRIX_MULT_AND_ACC	1, 40, 40
-	MATRIX_MULT_AND_ACC	1, 44, 56
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 32, 8  ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 
 	;; Row 2 Column 3
 .r2c3:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 32, 12
-	MATRIX_MULT_AND_ACC	2, 36, 28
-	MATRIX_MULT_AND_ACC	2, 40, 44
-	MATRIX_MULT_AND_ACC	2, 44, 60
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 32, 12 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 3 Column 0
 .r3c0:	
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 48, 0  ; accumulator number, left byte offset, right byte offset
-	MATRIX_MULT_AND_ACC	1, 52, 16 ;
-	MATRIX_MULT_AND_ACC	1, 56, 32 ;
-	MATRIX_MULT_AND_ACC	1, 60, 48 ;
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 48, 0 ; accumulator number, left byte offset, right byte offset
+
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 
 	;; Row 3 Column 1
 .r3c1:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 48, 4
-	MATRIX_MULT_AND_ACC	2, 52, 20
-	MATRIX_MULT_AND_ACC	2, 56, 36
-	MATRIX_MULT_AND_ACC	2, 60, 52
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 48, 4 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
 	;; Row 3 Column 2
 .r3c2:
-	movei	#0,MATRIX_ACCUMULATOR_1
-	MATRIX_MULT_AND_ACC	1, 48, 8
-	MATRIX_MULT_AND_ACC	1, 52, 24
-	MATRIX_MULT_AND_ACC	1, 56, 40
-	MATRIX_MULT_AND_ACC	1, 60, 56
+	moveq	#0,MATRIX_ACCUMULATOR_1
+	MATRIX_MULT_AND_ACC_ROW	1, 48, 8 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 
 	;; Row 3 Column 3
 .r3c3:
-	movei	#0,MATRIX_ACCUMULATOR_2
-	MATRIX_MULT_AND_ACC	2, 48, 12
-	MATRIX_MULT_AND_ACC	2, 52, 28
-	MATRIX_MULT_AND_ACC	2, 56, 44
-	MATRIX_MULT_AND_ACC	2, 60, 60
+	moveq	#0,MATRIX_ACCUMULATOR_2
+	MATRIX_MULT_AND_ACC_ROW	2, 48, 12 ; accumulator number, left byte offset, right byte offset
 	addq	#4,PTR_MATRIX_RESULT
 	store	MATRIX_ACCUMULATOR_2,(PTR_MATRIX_RESULT)
 
@@ -322,26 +299,203 @@ _gpu_matrix_multiply_jsr_entry:
 	GPU_RTS
 	
 _gpu_matrix_multiply_end::
-	
-	.phrase
-FIXED_PRODUCT:
-	PushReg	r14
-	PushReg	r15
-	
-	;; Space optimization: This is only needed for matrix multiply and accumulate behavior
-	;; but nothing else uses FIXED_PRODUCT in this GPU program
-	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),r14
-	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),r15
 
-	;; Make sure we have these values before the register bank changes
-	or	r14,r14
-	or	r15,r15
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	.macro	LoadTrigTables
+	    movei	_FIXED_SINE_TABLE,TEMP1
+	    move	TEMP1,SIN_TABLE
+
+	    movei	_FIXED_COSINE_TABLE,TEMP1
+	    move	TEMP1,COS_TABLE
+	.endm
+
+	PTR_MATRIX_ROT		.equr	r12
+
+	MATRIX_OFFSET		.equr	r14
+	TRIG_TABLE_OFFSET	.equr	r15
+
+	FIXED_SIN		.equr	r16
+	FIXED_COS		.equr	r17
+
+	SIN_TABLE		.equr	r18
+	COS_TABLE		.equr	r19
+
+	SIN_DEGREES		.equr	r20
+	COS_DEGREES		.equr	r21
+
+	X_DEGREES		.equr	r22
+	Y_DEGREES		.equr	r23
+	Z_DEGREES		.equr	r24
+
+	SIN_X_DEGREES		.equr	r25
+	COS_X_DEGREES		.equr	r26
+	SIN_Y_DEGREES		.equr	r27
+	COS_Y_DEGREES		.equr	r28
+	SIN_Z_DEGREES		.equr	r29
+	COS_Z_DEGREES		.equr	r30
+
+	.phrase
+_gpu_matrix_rotation::
+	;; Build a rotation matrix for (X,Y,Z) degrees.
+	GPU_REG_BANK_1
+
+	LoadTrigTables
+
+	movei	#_gpu_matrix_ptr_result,PTR_MATRIX_ROT
+	load	(PTR_MATRIX_ROT),PTR_MATRIX_ROT
+
+	; Load the X,Y,Z degrees.
+	movei	#_gpu_matrix_vector,TEMP1
+	moveq	#4,r14
+	load	(TEMP1),X_DEGREES
+	load	(r14+TEMP1),Y_DEGREES
+	addq	#4,r14
+	load	(r14+TEMP1),Z_DEGREES
+
+.get_sin_X_cos_X:
+	move	X_DEGREES,TRIG_TABLE_OFFSET
+	shlq	#2,TRIG_TABLE_OFFSET ;trig table entries are 4 bytes long
+	load	(TRIG_TABLE_OFFSET+SIN_TABLE),SIN_X_DEGREES
+	load	(TRIG_TABLE_OFFSET+COS_TABLE),COS_X_DEGREES
+
+.get_sin_Y_cos_Y:
+	move	Y_DEGREES,TRIG_TABLE_OFFSET
+	shlq	#2,TRIG_TABLE_OFFSET ;trig table entries are 4 bytes long
+	load	(TRIG_TABLE_OFFSET+SIN_TABLE),SIN_Y_DEGREES
+	load	(TRIG_TABLE_OFFSET+COS_TABLE),COS_Y_DEGREES
+
+.get_sin_Z_cos_Z:
+	move	Z_DEGREES,TRIG_TABLE_OFFSET
+	shlq	#2,TRIG_TABLE_OFFSET ;trig table entries are 4 bytes long
+	load	(TRIG_TABLE_OFFSET+SIN_TABLE),SIN_Z_DEGREES
+	load	(TRIG_TABLE_OFFSET+COS_TABLE),COS_Z_DEGREES
 	
-	GPU_REG_BANK_0
-	nop
-	nop
-	nop
-			
+	;; Row 0 Column 0 | FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_COSINE_TABLE[yDeg]);
+	moveta	COS_X_DEGREES,TEMP1 
+	move	COS_Y_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+
+	moveq	#0,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	;; Row 0 Column 1 | (-(FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_SINE_TABLE[zDeg]))) + (FIXED_MUL(FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_COSINE_TABLE[zDeg]));
+	move	COS_X_DEGREES,TEMP1
+	move	SIN_Y_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	SIN_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	TEMP1,r13
+
+	move	SIN_X_DEGREES,TEMP1
+	move	COS_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	r13,TEMP2
+	sub	TEMP1,TEMP2 	; TEMP2 -= TEMP1
+	
+	moveq	#4,MATRIX_OFFSET
+	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)		
+	
+	;; Row 0 Column 2 | FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_SINE_TABLE[zDeg]) + (FIXED_MUL(FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_COSINE_TABLE[zDeg]));
+	move	COS_X_DEGREES,TEMP1 
+	move	SIN_Y_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
+	move	COS_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
+	move	TEMP1,r13	; temp storage
+
+	move	SIN_X_DEGREES,TEMP1
+	move	SIN_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
+
+	add	r13,TEMP1	; add two products together
+	moveq	#8,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	;; Row 1 Column 0 | FIXED_MUL(FIXED_COSINE_TABLE[yDeg], FIXED_SINE_TABLE[zDeg]);
+	move	SIN_X_DEGREES,TEMP1
+	move	COS_Y_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	moveq	#16,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	;; Row 1 Column 1 | FIXED_MUL(FIXED_COSINE_TABLE[yDeg], FIXED_COSINE_TABLE[zDeg]) + (FIXED_MUL(FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_SINE_TABLE[zDeg]));
+	move	SIN_X_DEGREES,TEMP1
+	move	SIN_Y_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
+	move	SIN_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	TEMP1,r13
+
+	move	COS_X_DEGREES,TEMP1
+	move	COS_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+
+	add	r13,TEMP1
+	moveq	#20,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	;; Row 1 Column 2 | (-(FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_COSINE_TABLE[zDeg]))) + (FIXED_MUL(FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_SINE_TABLE[zDeg]));
+	move	SIN_X_DEGREES,TEMP1
+	move	SIN_Y_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	COS_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	TEMP1,r13
+
+	move	COS_X_DEGREES,TEMP1
+	move	SIN_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	move	r13,TEMP2
+	sub	TEMP1,TEMP2
+	
+	moveq	#24,MATRIX_OFFSET
+	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	
+	;; Row 2 Column 0 | -(FIXED_SINE_TABLE[yDeg])
+	move	SIN_Y_DEGREES,TEMP1
+	neg	TEMP1
+	movei	#32,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	;; Row 2 Column 1 | FIXED_MUL(FIXED_SINE_TABLE[xDeg],   FIXED_COSINE_TABLE[yDeg]);
+	move	COS_Y_DEGREES,TEMP1
+	move	SIN_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	movei	#36,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	;; Row 2 Column 2 | FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_COSINE_TABLE[yDeg]);
+	move	COS_Y_DEGREES,TEMP1
+	move	COS_Z_DEGREES,TEMP2
+	GPU_JSR	FIXED_PRODUCT_ROTATION
+	movei	#40,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+	movei	#$00000000,TEMP1
+	movei	#$00010000,TEMP2
+	movei	#12,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	movei	#28,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	movei	#44,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	movei	#48,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	movei	#52,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	movei	#56,MATRIX_OFFSET
+	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+	movei	#60,MATRIX_OFFSET
+	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)
+
+.abort:
+	GPU_REG_BANK_1
+	GPU_RTS
+
+_gpu_matrix_rotation_end::
+	
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;; Subroutine that multiplies two fixed-point numbers TEMP1 and TEMP2.
 	;; Result is returned in TEMP1.
 	FP_A     		.equr   r2
@@ -362,11 +516,42 @@ FIXED_PRODUCT:
 	FP_STEP6_OPERAND_1	.equr	r30
 	FP_STEP6_OPERAND_2	.equr	r31
 	
-	movei   #$0000FFFF,LOWORD_MASK
-	movei   #0,FIXED_PRODUCT_RESULT
+	.phrase
+FIXED_PRODUCT_MMULT:
+	PushReg	r14
+	PushReg	r15
+	
+	;; Space optimization: This is only needed for matrix multiply and accumulate behavior
+	;; but nothing else uses FIXED_PRODUCT in this GPU program
+	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),r14
+	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),r15
 
-	movefa	r14,FP_A
-	movefa	r15,FP_B
+	;; Make sure we have these values before the register bank changes
+	or	r14,r14
+	or	r15,r15
+
+	moveta	r14,FP_A
+	moveta	r15,FP_B
+
+	movei	#FIXED_PRODUCT,TEMP1
+	jump	t,(TEMP1)
+	nop
+
+FIXED_PRODUCT_ROTATION:
+	PushReg	r14
+	PushReg	r15
+	
+	moveta	TEMP1,FP_A
+	moveta	TEMP2,FP_B
+
+FIXED_PRODUCT:	
+	GPU_REG_BANK_0
+	nop
+	nop
+	nop
+			
+	movei   #$0000FFFF,LOWORD_MASK
+	moveq   #0,FIXED_PRODUCT_RESULT
 	
 	;; Step 1: A.i * B.f
 	move	FP_A,FP_STEP1_OPERAND_1
@@ -473,7 +658,7 @@ _gpu_matrix_translation:
 	TRANS_PTR_MATRIX	.equr	r9
 	
 	movei	#$00010000,TRANS_FIXED_ONE
-	movei	#$00000000,TRANS_FIXED_ZERO
+	moveq	#$00000000,TRANS_FIXED_ZERO
 
 	movei	#_gpu_matrix_ptr_result,TRANS_PTR_MATRIX
 	load	(TRANS_PTR_MATRIX),TRANS_PTR_MATRIX	;dereference the pointer
@@ -531,12 +716,26 @@ _gpu_matrix_translation_end::
 _gpu_build_transformation_matrix::
 	GPU_REG_BANK_1		; ensure we start in register bank 1
 
-	movei	#stack_end,r31	; set up the stack
+	movei	#stack_bank_1_end,r31	; set up the stack
 
 	;; Reset _m and _mModel
 	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_identity,#_m
 	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_identity,#_mModel
 
+	;; Create the model's rotation matrix.
+	movei	#_shape_Current,r10
+	load	(r10),r10
+	movei	#SHAPE_ROTATION,r14
+	load	(r14+r10),r11
+
+	movei	#_mRotation,r3
+	load	(r3),r3
+	movei	#_gpu_matrix_ptr_result,r4
+	store	r3,(r4)
+	movei	#_gpu_matrix_ptr_vector,r5
+	store	r11,(r5)
+*	GPU_JSR	#_gpu_matrix_rotation
+	
 	;; Create the model's translation matrix.
 	movei	#_shape_Current,r10
 	load	(r10),r10		; get the shape pointer
@@ -555,7 +754,7 @@ _gpu_build_transformation_matrix::
 	
 	;; Perform translation * rotation = mModel
 	;; Perform mPerspective * mView * mModel = m
-	movei	#0,r30		; set up the matrix multiply as a JSR and not a standalone program
+	moveq	#0,r30		; set up the matrix multiply as a JSR and not a standalone program
 	
 	movei	#_gpu_pc_result_ptr,TEMP1
 	movei	#_gpu_pc_result_storage,TEMP2
@@ -644,8 +843,11 @@ _gpu_matrix_identity:		dc.l	$00010000,$00000000,$00000000,$00000000
 
 	;; 64-byte stack
 	.phrase
-stack:	dcb.l	16,$00000000
-stack_end:
+stack_bank_0:	dcb.l	16,0
+stack_bank_0end:
+
+stack_bank_1:	dcb.l	16,0
+stack_bank_1_end:	
 	
 	.68000
 _gpu_matrix_program_end::
