@@ -182,9 +182,6 @@ int main() {
 	cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
 	cube.triangles = cube_triangles;
 
-	DSP_LOAD_MATRIX_PROGRAM();
-	skunkCONSOLEWRITE("DSP program uploaded.\n");
-	
 	//Init transformation matrix
 	m = calloc(1, sizeof(Matrix44));
 	mTranslation = calloc(1, sizeof(Matrix44));
@@ -239,10 +236,6 @@ int main() {
     cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
     cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
     cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
-	
-	skunkCONSOLEWRITE("Building rotation matrix\n");
-	Matrix44_Identity(mRotation);
-	Matrix44_Rotation(cube.rotation, mRotation);
     
     framecounter = (framecounter + 1) % 60;
     framenumber++;
@@ -320,12 +313,15 @@ int main() {
 	
 	jag_dsp_wait();
 	
+	MMIO32(0x60010) = (uint32_t)mRotation;
 	GPU_BUILD_TRANSFORMATION_START();
-	jag_gpu_wait();	
+	jag_gpu_wait();
+	
+	//while(true) {};
 	
 	skunkCONSOLEWRITE("Transformation is calculated!\n");
   
-	skunkCONSOLEWRITE("LINEDRAW\n");
+	skunkCONSOLEWRITE("Loading LINEDRAW\n");
     GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
 	
 	Vector4FX projectedPoints[3];

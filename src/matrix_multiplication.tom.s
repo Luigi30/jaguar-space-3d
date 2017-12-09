@@ -154,9 +154,10 @@ _gpu_matrix_multiply::
 	GPU_REG_BANK_1
 	movei	#stack_bank_1_end,SP
 	movei	#1,STOP_GPU_AT_END
-
+	
 	.phrase
 _gpu_matrix_multiply_jsr_entry:
+	
 	PushReg	r14
 	PushReg	r15
 	PushReg	r30
@@ -338,20 +339,19 @@ _gpu_matrix_multiply_end::
 	.phrase
 _gpu_matrix_rotation::
 	;; Build a rotation matrix for (X,Y,Z) degrees.
-	GPU_REG_BANK_1
-
 	LoadTrigTables
 
 	movei	#_gpu_matrix_ptr_result,PTR_MATRIX_ROT
 	load	(PTR_MATRIX_ROT),PTR_MATRIX_ROT
 
 	; Load the X,Y,Z degrees.
-	movei	#_gpu_matrix_vector,TEMP1
-	moveq	#4,r14
-	load	(TEMP1),X_DEGREES
-	load	(r14+TEMP1),Y_DEGREES
-	addq	#4,r14
-	load	(r14+TEMP1),Z_DEGREES
+	movei	#_gpu_matrix_ptr_vector,TEMP1
+	load	(TEMP1),TEMP2
+	load	(TEMP2),X_DEGREES
+	addq	#4,TEMP1
+	load	(TEMP2),Y_DEGREES
+	addq	#4,TEMP1
+	load	(TEMP2),Z_DEGREES
 
 .get_sin_X_cos_X:
 	move	X_DEGREES,TRIG_TABLE_OFFSET
@@ -372,14 +372,16 @@ _gpu_matrix_rotation::
 	load	(TRIG_TABLE_OFFSET+COS_TABLE),COS_Z_DEGREES
 	
 	;; Row 0 Column 0 | FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_COSINE_TABLE[yDeg]);
-	moveta	COS_X_DEGREES,TEMP1 
+	movei	#0,MATRIX_OFFSET
+	
+	move	COS_X_DEGREES,TEMP1 
 	move	COS_Y_DEGREES,TEMP2
-	GPU_JSR	FIXED_PRODUCT_ROTATION
 
-	moveq	#0,MATRIX_OFFSET
+	GPU_JSR	FIXED_PRODUCT_ROTATION
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	;; Row 0 Column 1 | (-(FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_SINE_TABLE[zDeg]))) + (FIXED_MUL(FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_COSINE_TABLE[zDeg]));
+	moveq	#4,MATRIX_OFFSET
 	move	COS_X_DEGREES,TEMP1
 	move	SIN_Y_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION
@@ -393,10 +395,10 @@ _gpu_matrix_rotation::
 	move	r13,TEMP2
 	sub	TEMP1,TEMP2 	; TEMP2 -= TEMP1
 	
-	moveq	#4,MATRIX_OFFSET
-	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)		
+	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 	
 	;; Row 0 Column 2 | FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_SINE_TABLE[zDeg]) + (FIXED_MUL(FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_COSINE_TABLE[zDeg]));
+	moveq	#8,MATRIX_OFFSET
 	move	COS_X_DEGREES,TEMP1 
 	move	SIN_Y_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
@@ -409,17 +411,17 @@ _gpu_matrix_rotation::
 	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
 
 	add	r13,TEMP1	; add two products together
-	moveq	#8,MATRIX_OFFSET
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	;; Row 1 Column 0 | FIXED_MUL(FIXED_COSINE_TABLE[yDeg], FIXED_SINE_TABLE[zDeg]);
+	moveq	#16,MATRIX_OFFSET
 	move	SIN_X_DEGREES,TEMP1
 	move	COS_Y_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION
-	moveq	#16,MATRIX_OFFSET
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	;; Row 1 Column 1 | FIXED_MUL(FIXED_COSINE_TABLE[yDeg], FIXED_COSINE_TABLE[zDeg]) + (FIXED_MUL(FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_SINE_TABLE[zDeg]));
+	moveq	#20,MATRIX_OFFSET
 	move	SIN_X_DEGREES,TEMP1
 	move	SIN_Y_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION	; result in TEMP1
@@ -432,10 +434,10 @@ _gpu_matrix_rotation::
 	GPU_JSR	FIXED_PRODUCT_ROTATION
 
 	add	r13,TEMP1
-	moveq	#20,MATRIX_OFFSET
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	;; Row 1 Column 2 | (-(FIXED_MUL(FIXED_SINE_TABLE[xDeg], FIXED_COSINE_TABLE[zDeg]))) + (FIXED_MUL(FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_SINE_TABLE[yDeg]), FIXED_SINE_TABLE[zDeg]));
+	moveq	#24,MATRIX_OFFSET
 	move	SIN_X_DEGREES,TEMP1
 	move	SIN_Y_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION
@@ -449,27 +451,26 @@ _gpu_matrix_rotation::
 	move	r13,TEMP2
 	sub	TEMP1,TEMP2
 	
-	moveq	#24,MATRIX_OFFSET
 	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 	
 	;; Row 2 Column 0 | -(FIXED_SINE_TABLE[yDeg])
+	movei	#32,MATRIX_OFFSET
 	move	SIN_Y_DEGREES,TEMP1
 	neg	TEMP1
-	movei	#32,MATRIX_OFFSET
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	;; Row 2 Column 1 | FIXED_MUL(FIXED_SINE_TABLE[xDeg],   FIXED_COSINE_TABLE[yDeg]);
+	movei	#36,MATRIX_OFFSET
 	move	COS_Y_DEGREES,TEMP1
 	move	SIN_Z_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION
-	movei	#36,MATRIX_OFFSET
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	;; Row 2 Column 2 | FIXED_MUL(FIXED_COSINE_TABLE[xDeg], FIXED_COSINE_TABLE[yDeg]);
+	movei	#40,MATRIX_OFFSET
 	move	COS_Y_DEGREES,TEMP1
 	move	COS_Z_DEGREES,TEMP2
 	GPU_JSR	FIXED_PRODUCT_ROTATION
-	movei	#40,MATRIX_OFFSET
 	store	TEMP1,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 	movei	#$00000000,TEMP1
@@ -490,7 +491,6 @@ _gpu_matrix_rotation::
 	store	TEMP2,(MATRIX_OFFSET+PTR_MATRIX_ROT)
 
 .abort:
-	GPU_REG_BANK_1
 	GPU_RTS
 
 _gpu_matrix_rotation_end::
@@ -514,7 +514,7 @@ _gpu_matrix_rotation_end::
 	FP_STEP5_OPERAND_1	.equr	r28
 	FP_STEP5_OPERAND_2	.equr	r29
 	FP_STEP6_OPERAND_1	.equr	r30
-	FP_STEP6_OPERAND_2	.equr	r31
+	FP_STEP6_OPERAND_2	.equr	r6
 	
 	.phrase
 FIXED_PRODUCT_MMULT:
@@ -716,7 +716,11 @@ _gpu_matrix_translation_end::
 _gpu_build_transformation_matrix::
 	GPU_REG_BANK_1		; ensure we start in register bank 1
 
-	movei	#stack_bank_1_end,r31	; set up the stack
+	movei	#stack_bank_1_end,SP	; set up the stack
+
+	movei	#_gpu_pc_result_ptr,TEMP1
+	movei	#_gpu_pc_result_storage,TEMP2
+	store	TEMP2,(TEMP1)
 
 	;; Reset _m and _mModel
 	COPY_MATRIX_FROM_ARRAY_TO_POINTER	#_gpu_matrix_identity,#_m
@@ -726,21 +730,23 @@ _gpu_build_transformation_matrix::
 	movei	#_shape_Current,r10
 	load	(r10),r10
 	movei	#SHAPE_ROTATION,r14
-	load	(r14+r10),r11
+	add	r14,r10
 
 	movei	#_mRotation,r3
 	load	(r3),r3
 	movei	#_gpu_matrix_ptr_result,r4
 	store	r3,(r4)
+	
 	movei	#_gpu_matrix_ptr_vector,r5
-	store	r11,(r5)
-*	GPU_JSR	#_gpu_matrix_rotation
+	store	r10,(r5)
+
+	GPU_JSR	#_gpu_matrix_rotation
 	
 	;; Create the model's translation matrix.
 	movei	#_shape_Current,r10
 	load	(r10),r10		; get the shape pointer
 	movei	#SHAPE_TRANSLATION,r14 	; offset of the translation vector
-	load	(r14+r10),r11	; get the pointer to the translation vector
+	load	(r14+r10),r11		; ???
 
 	movei	#_mTranslation,r3
 	load	(r3),r3
@@ -755,10 +761,6 @@ _gpu_build_transformation_matrix::
 	;; Perform translation * rotation = mModel
 	;; Perform mPerspective * mView * mModel = m
 	moveq	#0,r30		; set up the matrix multiply as a JSR and not a standalone program
-	
-	movei	#_gpu_pc_result_ptr,TEMP1
-	movei	#_gpu_pc_result_storage,TEMP2
-	store	TEMP2,(TEMP1)
 
 	movei	#_M_MultLeft,r27
 	movei	#_M_MultRight,r28
