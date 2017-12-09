@@ -277,10 +277,18 @@ int main() {
     switch(stick0 ^ stick0_lastread)
 	{
 	case STICK_UP:
-		//if(~stick0_lastread & STICK_UP) printf("Up\n");
+		if(~stick0_lastread & STICK_UP)
+		{
+			VIEW_EYE.y += 0x00010000;
+			VIEW_CENTER.y += 0x00010000;
+		}
 	break;
 	case STICK_DOWN:
-		//if(~stick0_lastread & STICK_DOWN) printf("Down\n");
+		if(~stick0_lastread & STICK_DOWN)
+		{
+			VIEW_EYE.y -= 0x00010000;
+			VIEW_CENTER.y -= 0x00010000;
+		}
 	break;
 	case STICK_LEFT:
 		if(~stick0_lastread & STICK_LEFT)
@@ -328,7 +336,6 @@ int main() {
 	skunkCONSOLEWRITE("LINEDRAW\n");
     GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
 	
-	/* TODO: Perspective transformation. The vertex coordinates aren't correct after the VectorProduct operation? */
 	Vector4FX projectedPoints[3];
 	
 	line_clut_color = 255;
@@ -338,15 +345,6 @@ int main() {
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
 	
-	/*
-    for(int triNum=0; triNum<11; triNum++){	
-		object_M = m;
-		object_Triangle = cube.triangles[triNum];
-		GPU_PROJECT_AND_DRAW_TRIANGLE();
-		jag_gpu_wait();
-	}
-	*/
-
 	/*
     sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);
     skunkCONSOLEWRITE(skunkoutput);

@@ -1,3 +1,6 @@
+;;; Matrix multiplication program for the Jaguar GPU.
+;;; ABI: r0-r9 are volatile on function calls, r10-r30 should be preserved. r31 = stack pointer.
+;;; TODO: Make all the routines compliant with this ABI.
 	.section text
 	
 	.gpu
@@ -22,8 +25,6 @@
 	
 	movei	#\offset_left,OFFSET_MATRIX_LEFT
 	movei	#\offset_right,OFFSET_MATRIX_RIGHT
-	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),r14
-	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),r15
 
 	GPU_JSR	FIXED_PRODUCT
 	add	TEMP1,MATRIX_ACCUMULATOR_\acc_num
@@ -115,15 +116,13 @@ _gpu_matrix_multiply_program_start::
 _gpu_matrix_multiply::	
 	;; Calculate gpu_matrix_operand_1 * gpu_matrix_operand_2
 	;; Result is stored in gpu_matrix_result
-	PTR_MATRIX_RESULT	.equr	r10
-	PTR_MATRIX_LEFT		.equr	r11
-	PTR_MATRIX_RIGHT	.equr	r12
-
+	PTR_MATRIX_RESULT	.equr	r2
+	PTR_MATRIX_LEFT		.equr	r3
+	PTR_MATRIX_RIGHT	.equr	r4
+	MATRIX_ACCUMULATOR_1	.equr	r5
+	MATRIX_ACCUMULATOR_2	.equr	r6
 	OFFSET_MATRIX_LEFT	.equr	r14
 	OFFSET_MATRIX_RIGHT	.equr	r15
-	
-	MATRIX_ACCUMULATOR_1	.equr	r16
-	MATRIX_ACCUMULATOR_2	.equr	r17
 
 	STOP_GPU_AT_END		.equr	r30
 
@@ -133,6 +132,10 @@ _gpu_matrix_multiply::
 
 	.phrase
 _gpu_matrix_multiply_jsr_entry:
+	PushReg	r14
+	PushReg	r15
+	PushReg	r30
+	
 	COPY_MATRIX_FROM_POINTER_TO_ARRAY	#_M_MultLeft,#_gpu_matrix_operand_1
 	COPY_MATRIX_FROM_POINTER_TO_ARRAY	#_M_MultRight,#_gpu_matrix_operand_2
 
@@ -148,7 +151,6 @@ _gpu_matrix_multiply_jsr_entry:
 	MATRIX_MULT_AND_ACC	1, 4, 16 ;
 	MATRIX_MULT_AND_ACC	1, 8, 32 ;
 	MATRIX_MULT_AND_ACC	1, 12,48 ;
-	
 	store	MATRIX_ACCUMULATOR_1,(PTR_MATRIX_RESULT)
 	
 	;; Row 0 Column 1
@@ -307,17 +309,33 @@ _gpu_matrix_multiply_jsr_entry:
 	cmpq	#0,STOP_GPU_AT_END
 	jr	eq,.return
 	nop
-	
+
+	;; Stopping the GPU - don't care about the stack
 	StopGPU
 	nop
 
 .return:
+	PopReg	r30
+	PopReg	r15
+	PopReg	r14
 	GPU_RTS
 	
 _gpu_matrix_multiply_end::
 	
 	.phrase
 FIXED_PRODUCT:
+	PushReg	r14
+	PushReg	r15
+	
+	;; Space optimization: This is only needed for matrix multiply and accumulate behavior
+	;; but nothing else uses FIXED_PRODUCT in this GPU program
+	load	(OFFSET_MATRIX_LEFT+PTR_MATRIX_LEFT),r14
+	load	(OFFSET_MATRIX_RIGHT+PTR_MATRIX_RIGHT),r15
+
+	;; Make sure we have these values before the register bank changes
+	or	r14,r14
+	or	r15,r15
+	
 	GPU_REG_BANK_0
 	nop
 	nop
@@ -423,16 +441,13 @@ FIXED_PRODUCT:
 	nop
 	nop
 	nop
-	movefa    FIXED_PRODUCT_RESULT,TEMP1
-	nop
-	nop
-	nop
+	movefa	FIXED_PRODUCT_RESULT,TEMP1
+	PopReg	r15
+	PopReg	r14
 	GPU_RTS
 
 _gpu_matrix_multiply_program_end::
-	.phrase
-stack:	dcb.l	16,$00000000
-stack_end:
+
 	;; Operands for matrix functions
 	.phrase
 _gpu_matrix_operand_1::	dcb.l	16,$AA55AA55 ;operand 1
@@ -445,7 +460,74 @@ _gpu_accumulator:	dc.l	0
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
+;;; Construct a translation matrix for a given gpu_matrix_vector. Store it to [gpu_matrix_ptr_result].
+;;; Can run in either bank.
+_gpu_matrix_translation::
+	TRANS_PTR_TRANSLATION	.equr	r3
+	TRANS_X			.equr	r4
+	TRANS_Y			.equr	r5
+	TRANS_Z			.equr	r6
+	TRANS_FIXED_ONE		.equr	r7
+	TRANS_FIXED_ZERO	.equr	r8
+	TRANS_PTR_MATRIX	.equr	r9
+	
+	movei	#$00010000,TRANS_FIXED_ONE
+	movei	#$00000000,TRANS_FIXED_ZERO
+
+	movei	#_gpu_matrix_ptr_result,TRANS_PTR_MATRIX
+	load	(TRANS_PTR_MATRIX),TRANS_PTR_MATRIX	;dereference the pointer
+	
+	movei	#_gpu_matrix_vector,TRANS_PTR_TRANSLATION
+	load	(TRANS_PTR_TRANSLATION),TRANS_X
+	addq	#4,TRANS_PTR_TRANSLATION
+	load	(TRANS_PTR_TRANSLATION),TRANS_Y
+	addq	#4,TRANS_PTR_TRANSLATION
+	load	(TRANS_PTR_TRANSLATION),TRANS_Z
+	
+.set_matrix_values:
+	store	TRANS_FIXED_ONE,(TRANS_PTR_MATRIX) 	;[0][0]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX)	;[0][1]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX)	;[0][2]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_X,(TRANS_PTR_MATRIX)	;[0][3]
+
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[1][0]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ONE,(TRANS_PTR_MATRIX)  ;[1][1]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[1][2]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_Y,(TRANS_PTR_MATRIX)    ;[1][3]
+
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[2][0]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[2][1]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ONE,(TRANS_PTR_MATRIX)  ;[2][2]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_Z,(TRANS_PTR_MATRIX)	;[2][3]
+
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[3][0]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[3][1]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) ;[3][2]
+	addq	#4,TRANS_PTR_MATRIX
+	store	TRANS_FIXED_ONE,(TRANS_PTR_MATRIX) 	;[3][3]
+	
+	GPU_RTS
+_gpu_matrix_translation_end::
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.phrase
 _gpu_build_transformation_matrix::
+	GPU_REG_BANK_1		; ensure we start in register bank 1
+	
 	;; Perform translation * rotation = mModel
 	;; Perform mPerspective * mView * mModel = m
 	movei	#0,r30		; set up the matrix multiply as a JSR and not a standalone program
@@ -520,9 +602,19 @@ _gpu_build_transformation_matrix_end::
 
 	;; Precalculate variables.
 	.phrase
+_gpu_matrix_ptr_result:		dc.l	0   ; storage for a pointer to a Matrix44
+_gpu_matrix_ptr_vector:		dc.l	0   ; storage for a pointer to a Vector3FX or Vector4FX
+_gpu_matrix_vector:		dcb.l	4,0 ; storage for a Vector3FX or Vector4FX
+	
+	.phrase
 _gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result
 	.phrase
 _gpu_pc_result_ptr:		dc.l	0
+
+	;; 64-byte stack
+	.phrase
+stack:	dcb.l	16,$00000000
+stack_end:
 	
 	.68000
 _gpu_matrix_program_end::

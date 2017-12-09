@@ -17,6 +17,16 @@ VIDDEST		.equr	r6
 JUMPADDR	.equr	r7
 RETURNADDR	.equr	r8
 SP		.equr	r31
+
+	.macro	PushReg	reg
+		subq	#4,SP	; adjust stack pointer
+		store	\reg,(SP); store the register value to the stack
+	.endm
+	
+	.macro	PopReg	reg
+		load	(SP),\reg; fetch the value from the stack
+		addq	#4,SP	; adjust stack pointer
+	.endm
 	
 	.macro	LoadValue val, destination
         movei	#\val,LOADTEMP
