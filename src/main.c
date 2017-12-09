@@ -58,6 +58,10 @@ int main() {
   //set correct endianness
   MMIO32(G_END) = 0x00070007;
   
+  DSP_LoadSoundEngine();
+  DSP_StartSoundEngine();
+  DSP_PlayModule();
+  
   GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
   
   srand(8675309);
@@ -310,8 +314,6 @@ int main() {
     stick0_lastread = stick0;
 
 	shape_Current = &cube;
-	
-	jag_dsp_wait();
 	
 	MMIO32(0x60010) = (uint32_t)mRotation;
 	GPU_BUILD_TRANSFORMATION_START();

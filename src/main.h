@@ -26,6 +26,10 @@
 #define SCREEN_WIDTH  320
 #define SCREEN_HEIGHT 200
 
+extern void DSP_LoadSoundEngine();
+extern void DSP_StartSoundEngine();
+extern void DSP_PlayModule();
+
 typedef struct shape_t {
   Vector3FX translation, rotation, scale;
   Vector3FX **triangles;	//Pointer to the triangles array of the shape.
