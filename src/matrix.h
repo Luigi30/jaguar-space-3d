@@ -48,6 +48,8 @@ extern Matrix44 *M_MultLeft;
 extern Matrix44 *M_MultRight;
 extern Matrix44 *M_MultResult;
 
+extern Matrix44 *mViewTranslate;
+
 void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX UP);
 void buildPerspectiveMatrix(Matrix44 *mPerspective);
 

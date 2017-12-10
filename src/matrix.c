@@ -16,6 +16,8 @@ Matrix44 *M_MultLeft;
 Matrix44 *M_MultRight;
 Matrix44 *M_MultResult;
 
+Matrix44 *mViewTranslate;
+
 Matrix44 *Matrix44_Alloc(){
   return calloc(1, sizeof(Matrix44));
 }
@@ -161,7 +163,6 @@ void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX
 	mView->data[2][0] = -f.x; mView->data[2][1] = -f.y; mView->data[2][2] = -f.z; mView->data[2][3] = 0;
 	mView->data[3][0] = s.x; mView->data[3][1] = s.y; mView->data[3][2] = s.z; mView->data[3][3] = 0x00010000;
 	
-	Matrix44 *mViewTranslate = calloc(1, sizeof(Matrix44));
 	Matrix44_Identity(mViewTranslate);
 	mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;
 	Matrix44_Multiply_Matrix44(mView, mViewTranslate, mView);

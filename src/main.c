@@ -60,7 +60,7 @@ int main() {
   
   DSP_LoadSoundEngine();
   DSP_StartSoundEngine();
-  DSP_PlayModule();
+  //DSP_PlayModule();
   
   GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
   
@@ -201,13 +201,16 @@ int main() {
 	mvp_vector = calloc(1, sizeof(Vector3FX));
 	mvp_matrix = calloc(1, sizeof(Matrix44));
 	mvp_result = calloc(1, sizeof(Vector3FX));
-  
+	
+	mView = calloc(1, sizeof(Matrix44));
+	mViewTranslate = calloc(1, sizeof(Matrix44));
+	
+	Vector3FX transformedVertexList[4];
+	
 	//Init view parameters
 	VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00040000 };
 	VIEW_CENTER = (Vector3FX){ 0x00000000, 0, 0xFFFC0000 };
-	VIEW_UP 	= (Vector3FX){ 0, 0x00010000, 0 };
-	
-	Vector3FX transformedVertexList[4];
+	VIEW_UP 	= (Vector3FX){ 0, 0x00010000, 0 };	
 		
   while(true) {
 	  
@@ -225,15 +228,16 @@ int main() {
     jag_wait_vbl();
     
     clear_video_buffer(back_buffer);
+	
+	buildPerspectiveMatrix(mPerspective);
 
     /* Buffer is now clear. */
 	
 	/* 3D! */
-	skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM\n");
+	//skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM\n");
     GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
 	
-	mView = calloc(1, sizeof(Matrix44));
-	skunkCONSOLEWRITE("Building view matrix\n");
+	//skunkCONSOLEWRITE("Building view matrix\n");
 	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
 	//TODO: This crashes if we reach 180 degrees in all 3 directions?
@@ -242,7 +246,6 @@ int main() {
     cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
-    framenumber++;
 
     if((framecounter % 60) == 0)
 	{
@@ -315,15 +318,14 @@ int main() {
 
 	shape_Current = &cube;
 	
-	MMIO32(0x60010) = (uint32_t)mRotation;
 	GPU_BUILD_TRANSFORMATION_START();
 	jag_gpu_wait();
 	
 	//while(true) {};
 	
-	skunkCONSOLEWRITE("Transformation is calculated!\n");
+	//skunkCONSOLEWRITE("Transformation is calculated!\n");
   
-	skunkCONSOLEWRITE("Loading LINEDRAW\n");
+	//skunkCONSOLEWRITE("Loading LINEDRAW\n");
     GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
 	
 	Vector4FX projectedPoints[3];
@@ -332,6 +334,11 @@ int main() {
 	
 	object_M = m;
 	object_Triangle = cube.triangles;
+	
+	MMIO32(0x50010) = (uint32_t)m;
+	MMIO32(0x50014) = (uint32_t)mModel;
+	MMIO32(0x50018) = (uint32_t)mView;
+	MMIO32(0x5001c) = (uint32_t)mPerspective;
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();

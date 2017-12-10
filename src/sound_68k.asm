@@ -9,7 +9,7 @@
 	
 _DSP_LoadSoundEngine:
 	move.w	#2048,d0
-	lea	dspcode,a0
+	lea		dspcode,a0
 	move.l	#D_RAM,a1
 	
 .loop:
