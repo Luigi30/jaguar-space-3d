@@ -241,9 +241,9 @@ int main() {
 	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
 	//TODO: This crashes if we reach 180 degrees in all 3 directions?
-    cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
-    cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
-    cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+    //cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
+    //cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+    //cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -321,8 +321,6 @@ int main() {
 	GPU_BUILD_TRANSFORMATION_START();
 	jag_gpu_wait();
 	
-	//while(true) {};
-	
 	//skunkCONSOLEWRITE("Transformation is calculated!\n");
   
 	//skunkCONSOLEWRITE("Loading LINEDRAW\n");
@@ -333,7 +331,7 @@ int main() {
 	line_clut_color = 255;
 	
 	object_M = m;
-	object_Triangle = cube.triangles;
+	object_Triangle = &cube.triangles[6];
 	
 	MMIO32(0x50010) = (uint32_t)m;
 	MMIO32(0x50014) = (uint32_t)mModel;
@@ -342,6 +340,8 @@ int main() {
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
+	
+	while(true) {};
 	
 	/*
     sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);

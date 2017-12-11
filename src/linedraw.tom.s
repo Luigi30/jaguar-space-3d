@@ -7,6 +7,8 @@
 ;   %11000:   MI   negative set
 ;   %10100:   PL   negative clear
 ;   %00101:   HI   greater than
+	lo	equ	4
+	ge	equ	8
 
 	.include "jaguar.inc"
 	.globl	_back_buffer
@@ -467,6 +469,10 @@ _gpu_tri_point_3:	dcb.l	4,0
 
 	DIVISOR_IS_NEGATIVE	.equr	r24
 	DIVIDEND_IS_NEGATIVE	.equr	r25
+	ADVANCE_TRIANGLE	.equr	r26
+
+	EDGE_AREA_HI		.equr	r28
+	EDGE_AREA_LO		.equr	r29
 	
 	.phrase
 _gpu_project_and_draw_triangle::
@@ -474,6 +480,8 @@ _gpu_project_and_draw_triangle::
 	nop
 	
 	movei	#stack_bank_0_end,SP
+	movei	#stack_bank_1_end,TEMP1
+	moveta	TEMP1,SP
 
 	;; Get matrix-vector product of each of the points.
 .triangle_loop:
@@ -540,6 +548,161 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
+.determine_triangle_winding:
+	WIND_POINT_1	.equr	r6
+	WIND_POINT_2	.equr	r7
+	WIND_POINT_3	.equr	r8
+
+	WIND_V0_X	.equr	r10
+	WIND_V0_Y	.equr	r11
+	WIND_V0_Z	.equr	r12
+
+	WIND_V1_X	.equr	r19
+	WIND_V1_Y	.equr	r20
+	WIND_V1_Z	.equr	r21
+
+	WIND_V2_X	.equr	r22
+	WIND_V2_Y	.equr	r23
+	WIND_V2_Z	.equr	r24
+
+	VECTOR_U_X	.equr	r25
+	VECTOR_U_Y	.equr	r26
+	VECTOR_U_Z	.equr	r27
+
+	VECTOR_V_X	.equr	r28
+	VECTOR_V_Y	.equr	r29
+	VECTOR_V_Z	.equr	r30
+	
+	movei	#_gpu_tri_point_1,r10
+	movei	#_gpu_tri_point_2,r11
+	movei	#_gpu_tri_point_3,r12
+
+	;; X
+	load	(r10),WIND_V0_X	
+	load	(r11),WIND_V1_X
+	load	(r12),WIND_V2_X	
+	moveq	#4,r14
+	;; Y
+	load	(r14+r10),WIND_V0_Y
+	load	(r14+r11),WIND_V1_Y
+	load	(r14+r12),WIND_V2_Y
+	moveq	#8,r14
+	;; Z
+	load	(r14+r10),WIND_V0_Z
+	load	(r14+r11),WIND_V1_Z
+	load	(r14+r12),WIND_V2_Z
+
+	;; http://cmichel.io/understanding-front-faces-winding-order-and-normals/
+	;; u = v1 - v0
+	move	WIND_V1_X,TEMP2
+	move	WIND_V0_X,TEMP1
+	sub	TEMP1,TEMP2
+	move	TEMP2,VECTOR_U_X
+
+	move	WIND_V1_Y,TEMP2
+	move	WIND_V0_Y,TEMP1
+	sub	TEMP1,TEMP2
+	move	TEMP2,VECTOR_U_Y
+
+	move	WIND_V1_Z,TEMP2
+	move	WIND_V0_Z,TEMP1
+	sub	TEMP1,TEMP2
+	move	TEMP2,VECTOR_U_Z
+
+	;; v = v2 - v0
+	move	WIND_V2_X,TEMP2
+	move	WIND_V0_X,TEMP1
+	sub	TEMP1,TEMP2
+	move	TEMP2,VECTOR_V_X
+
+	move	WIND_V2_Y,TEMP2
+	move	WIND_V0_Y,TEMP1
+	sub	TEMP1,TEMP2
+	move	TEMP2,VECTOR_V_Y
+
+	move	WIND_V2_Z,TEMP2
+	move	WIND_V0_Z,TEMP1
+	sub	TEMP1,TEMP2
+	move	TEMP2,VECTOR_V_Z
+	
+	;; Cross product:
+	;; U.y*V.z - U.z*V.y
+	;; U.z*V.x - U.x*V.z
+	;; U.x*V.y - U.y*V.x
+	move	VECTOR_U_Y,r17
+	move	VECTOR_V_Z,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	move	r5,r6
+
+	move	VECTOR_U_Z,r17
+	move	VECTOR_V_Y,r18
+	GPU_JSR FIXED_PRODUCT_BANK_1
+	sub	r5,r6
+	move	r6,r2
+
+	;;
+	move	VECTOR_U_Z,r17
+	move	VECTOR_V_X,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	move	r5,r6
+
+	move	VECTOR_U_X,r17
+	move	VECTOR_V_Z,r18
+	GPU_JSR FIXED_PRODUCT_BANK_1
+	sub	r5,r6
+	move	r6,r3
+
+	;; 
+	move	VECTOR_U_X,r17
+	move	VECTOR_V_Y,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	move	r5,r6
+
+	move	VECTOR_U_Y,r17
+	move	VECTOR_V_X,r18
+	GPU_JSR FIXED_PRODUCT_BANK_1
+	sub	r5,r6
+	move	r6,r4
+
+.normalize:
+	;; Normalize the vector at r2-r4.
+	;; Store it in the other register bank at r10-r12.
+	move	r2,r17
+	move	r2,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	moveta	r5,r10		; pass to bank 1
+
+	move	r3,r17
+	move	r3,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	moveta	r5,r11		; pass to bank 1
+
+	move	r4,r17
+	move	r4,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	moveta	r5,r12		; pass to bank 1
+
+	;; Do FIXED_SQRT in reg bank 1.
+	GPU_REG_BANK_1
+	nop
+
+	move	r10,r0
+	add	r11,r0
+	add	r12,r0
+
+	movei	#$000F0000,r0
+
+	GPU_JSR	FIXED_SQRT	; r0 = sqrt(r0)
+	moveta	r0,r0
+
+	GPU_REG_BANK_0
+	nop
+
+	;; We're back in bank 0 and the magnitude of the cross product of U and V is in r0.
+	move	r0,r10
+	
+	StopGPU
+
 .make_screen_coordinates:
 	movei	#_gpu_tri_point_1,r10
 	movei	#_gpu_tri_point_2,r11
@@ -590,6 +753,7 @@ _gpu_project_and_draw_triangle::
 	;; And blit.
 	GPU_JSR	#_blit_triangle
 
+.advance_triangle:
 	movei	#_object_Triangle,r3
 	load	(r3),r4
 	addq	#4,r4
@@ -923,6 +1087,62 @@ _gpu_matrix_vector_product:
 	nop
 	GPU_RTS
 
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+FIXED_SQRT:
+	;; Calculate the square root of r0.
+	;; Returned in r0.
+	FRACBITS	.equ	16
+	ITERS		.equ	(15 + (FRACBITS >> 1))
+
+	SQRT_ROOT	.equr	r20
+	SQRT_REM_HI	.equr	r21
+	SQRT_REM_LO	.equr	r22
+	SQRT_TEST_DIV	.equr	r23
+	SQRT_COUNT	.equr	r24
+
+	SQRT_THIRTY	.equr	r25
+	SQRT_LOOP_CHECK	.equr	r29
+	SQRT_LOOP_ADDR	.equr	r30
+
+	moveq	#0,SQRT_ROOT
+	moveq	#0,SQRT_REM_HI
+	move	r0,SQRT_REM_LO
+	moveq	ITERS,SQRT_COUNT
+
+	moveq	#30,SQRT_THIRTY
+	movei	#.sqrt_loop,SQRT_LOOP_ADDR
+	movei	#.sqrt_do_loop,SQRT_LOOP_CHECK
+
+.sqrt_loop:
+	shlq	#2,SQRT_REM_HI
+	move	SQRT_REM_LO,TEMP1
+	sh	SQRT_THIRTY,TEMP1
+	or	TEMP1,SQRT_REM_HI
+	shlq	#2,SQRT_REM_LO
+
+	shlq	#1,SQRT_ROOT
+	move	SQRT_ROOT,SQRT_TEST_DIV
+	shlq	#1,SQRT_TEST_DIV
+	addq	#1,SQRT_TEST_DIV
+
+	cmp	SQRT_TEST_DIV,SQRT_REM_HI
+	jump	ge,(SQRT_LOOP_CHECK) ;if remHi >= testDiv
+	nop
+
+	sub	SQRT_TEST_DIV,SQRT_REM_HI
+	addq	#1,SQRT_ROOT
+
+.sqrt_do_loop:
+	subq	#1,SQRT_COUNT
+
+	cmpq	#-1,SQRT_COUNT
+	jump	ne,(SQRT_LOOP_ADDR) ; if not -1, keep looping
+	nop
+
+	move	SQRT_ROOT,r0
+
+	GPU_RTS
+	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	FP_A     		.equr   r2
 	FP_B     		.equr   r3
