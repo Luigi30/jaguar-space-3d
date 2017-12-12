@@ -97,7 +97,7 @@ FIXED_32 FIXED_SQRT(FIXED_32 val)
 	count = ITERS;  //16.16 number
 	
 	do {
-		remHi = (remHi << 2) | (remLo >> 30); remLo <<= 2;
+		remHi = (remHi << 2) | (remLo >> 30); remLo <<= 2;	
 		root <<= 1;
 		testDiv = (root << 1) + 1; //test radical
 		if(remHi >= testDiv) {

@@ -548,6 +548,10 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
+	movei	#.make_screen_coordinates,r30
+	jump	t,(r30)
+	nop
+
 .determine_triangle_winding:
 	WIND_POINT_1	.equr	r6
 	WIND_POINT_2	.equr	r7
@@ -690,18 +694,65 @@ _gpu_project_and_draw_triangle::
 	add	r11,r0
 	add	r12,r0
 
-	movei	#$000F0000,r0
-
 	GPU_JSR	FIXED_SQRT	; r0 = sqrt(r0)
-	moveta	r0,r0
+	moveta	r0,r10		; store the magnitude in bank 0 r10
+
+	;; divide vector by magnitude
+	movefa	r2,r0
+	movefa	r10,r1
+	GPU_JSR	FIXED_DIV
+	moveta	r0,r2		; x
+
+	movefa	r3,r0
+	movefa	r10,r1
+	GPU_JSR	FIXED_DIV
+	moveta	r0,r3		; y
+
+	movefa	r4,r0
+	movefa	r10,r1
+	GPU_JSR	FIXED_DIV
+	moveta	r0,r4		; z
 
 	GPU_REG_BANK_0
 	nop
 
-	;; We're back in bank 0 and the magnitude of the cross product of U and V is in r0.
-	move	r0,r10
+	movei	#.advance_triangle,r30
+
+	;; Result is (r2,r3,r4).
+	;; Now create a vector from the camera to the triangle's p1.
+	movei	#_gpu_tri_point_1,r10
+	load	(r10),r11
+	addq	#4,r10
+	load	(r10),r12
+	addq	#4,r10
+	load	(r10),r13
+
+	moveq	#0,r20
+	moveq	#0,r21
+	movei	#$00040000,r22
+
+	sub	r20,r11
+	sub	r21,r12
+	sub	r22,r13
+
+	;; Calculate the dot product of V and p1 vector
+	move	r2,r17
+	move	r11,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	move	r5,r6
+
+	move	r3,r17
+	move	r12,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r5,r6
+
+	move	r2,r17
+	move	r13,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r5,r6
 	
-	StopGPU
+*	jump	pl,(r30)	; if surface normal is negative, it's visible?
+*	nop
 
 .make_screen_coordinates:
 	movei	#_gpu_tri_point_1,r10
@@ -1085,6 +1136,65 @@ _gpu_matrix_vector_product:
 	nop
 	nop
 	nop
+	GPU_RTS
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+FIXED_DIV:
+	;; Fixed-point divide.
+	;; TEMP1 = TEMP1 / TEMP2
+	movei	#1,r2	; set the divide unit for fixed-point divide
+	movei	#G_DIVCTRL,r3
+	store	r2,(r3)
+	nop
+	
+	DIV_DIVISOR_IS_NEGATIVE		.equr	r3
+	DIV_DIVIDEND_IS_NEGATIVE	.equr	r4
+	DIV_MINUS_ONE			.equr	r5
+	DIV_7FFFFFFF			.equr	r6
+
+	movei	#$FFFFFFFF,DIV_MINUS_ONE	; -1.0
+	movei	#$7FFFFFFF,DIV_7FFFFFFF		; xor value for negating a quotient
+	
+.test_dividend_sign:
+	btst	#31,TEMP1
+	jr	eq,.test_divisor_sign	;skip to the divisor if the number is positive
+	movei	#0,DIV_DIVIDEND_IS_NEGATIVE
+
+	;; The dividend is negative.
+	xor	DIV_MINUS_ONE,TEMP1	; take the absolute value of the dividend
+	addq	#1,TEMP1
+	movei	#1,DIV_DIVIDEND_IS_NEGATIVE
+
+.test_divisor_sign:
+	btst	#31,TEMP2
+	jr	eq,.do_divide		; skip to the divide if the number is positive
+	movei	#0,DIV_DIVISOR_IS_NEGATIVE
+	
+	xor	DIV_MINUS_ONE,TEMP2
+	addq    #1,TEMP2
+	movei	#1,DIV_DIVISOR_IS_NEGATIVE
+
+.do_divide:
+	div	TEMP2,TEMP1		; TEMP1 = TEMP1 / TEMP2
+	or	TEMP1,TEMP1
+
+	movei	#0,r2
+	add	DIV_DIVISOR_IS_NEGATIVE,r2
+	add	DIV_DIVIDEND_IS_NEGATIVE,r2
+	cmpq	#1,r2
+	jr	ne,.return_divided
+	nop
+
+	bset	#31,TEMP1
+	xor	DIV_7FFFFFFF,TEMP1
+	addq	#1,TEMP1
+
+	movei	#0,r2		; set the divide unit for integer divide
+	movei	#G_DIVCTRL,r3
+	store	r2,(r3)
+	nop
+
+.return_divided:
 	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
