@@ -13,6 +13,7 @@
 	.include "jaguar.inc"
 	.globl	_back_buffer
 	.globl	_scanline_offset_table
+	.globl  _VIEW_EYE
 	
 	;all FIXED_32
 	.globl _line_clut_color
@@ -740,29 +741,19 @@ _gpu_project_and_draw_triangle::
 	addq	#4,r10
 	load	(r10),r13
 
-	moveq	#0,r20
-	moveq	#0,r21
-	movei	#$00050000,r22
+	movei	#_VIEW_EYE,r19
+	load	(r19),r20
+	addq	#4,r19
+	load	(r19),r21
+	addq	#4,r19
+	load	(r19),r22
 	
 	sub	r11,r20
 	sub	r12,r21
 	sub	r13,r22
 
 	;; Calculate the dot product of V and p1 vector
-	move	r2,r17
-	move	r20,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	move	r5,r6
-	
-	move	r3,r17
-	move	r21,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r5,r6
-
-	move	r4,r17
-	move	r22,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r5,r6
+	FIXED_DOT_PRODUCT	r2,r3,r4, r20,r21,r22, r6
 
 	btst	#31,r6
 	jump	ne,(r30)	; if surface normal is positive, it's visible
@@ -846,14 +837,9 @@ _gpu_perspective_divide:
 	move	r10,TEMP2
 	addq	#12,TEMP2
 	load	(TEMP2),TEMP2
-
-	move	TEMP1,r20
-	move	TEMP2,r21
 	
 	GPU_JSR	FIXED_DIV
 	store	TEMP1,(r10)
-
-	move	TEMP1,r22
 	
 .perspective_divide_y:
 	addq	#4,r10
@@ -861,14 +847,9 @@ _gpu_perspective_divide:
 	move	r10,TEMP2
 	addq	#8,TEMP2	; grab the W coordinate
 	load	(TEMP2),TEMP2
-
-	move	TEMP1,r20
-	move	TEMP2,r21
 	
 	GPU_JSR	FIXED_DIV
 	store	TEMP1,(r10)
-
-	move	TEMP1,r22
 
 .perspective_divide_z:
 	addq	#4,r10
@@ -882,6 +863,7 @@ _gpu_perspective_divide:
 	GPU_RTS
 _gpu_project_and_draw_triangle_end::
 
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
 _gpu_matrix_vector_product:
 	GPU_REG_BANK_1
@@ -913,8 +895,10 @@ _gpu_matrix_vector_product:
 	movei	#0,MV_RESULT_OFFSET
 
 	movei	#stack_bank_1_end,SP
+	movei	#.calculate_row,r30
+	moveq	#4,r3
 
-.calculate_x:
+.calculate_row:
 	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
 	load	(MV_VECTOR),r18	
 	GPU_JSR	FIXED_PRODUCT	; matrix->data[0][0] * vector->x
@@ -952,93 +936,10 @@ _gpu_matrix_vector_product:
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_RESULT
 	subq	#8,MV_VECTOR	; reset to vector->x
-	
-.calculate_y:
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR	FIXED_PRODUCT	; matrix->data[1][0] * vector->x
-	move	r5,MV_ACCUMULATOR
 
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[1][1] * vector->y
-	add	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[1][2] * vector->z
-	add	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	add	r17,MV_ACCUMULATOR
-	store	MV_ACCUMULATOR,(MV_RESULT)
-
-	move	MV_ACCUMULATOR,r21
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_RESULT
-	subq	#8,MV_VECTOR	; reset to vector->x
-
-.calculate_z:
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR	FIXED_PRODUCT	; matrix->data[1][0] * vector->x
-	move	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[1][1] * vector->y
-	add	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[1][2] * vector->z
-	add	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	add	r17,MV_ACCUMULATOR
-	store	MV_ACCUMULATOR,(MV_RESULT)
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_RESULT
-	subq	#8,MV_VECTOR	; reset to vector->x
-
-.calculate_w:
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR	FIXED_PRODUCT	; matrix->data[3][0] * vector->x
-	move	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[3][1] * vector->y
-	add	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	addq	#4,MV_VECTOR
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[3][2] * vector->z
-	add	r5,MV_ACCUMULATOR
-
-	addq	#4,MV_MATRIX_OFFSET
-	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
-	add	r17,MV_ACCUMULATOR ; matrix->data[3][3] * 1
-	store	MV_ACCUMULATOR,(MV_RESULT)
-	
-	move	MV_ACCUMULATOR,r22
+	subq	#1,r3
+	cmpq	#0,r3
+	jump	ne,(r30)
 	nop
 	
 	GPU_REG_BANK_0
@@ -1049,120 +950,6 @@ _gpu_matrix_vector_product:
 
 	.include "fixed.risc.inc"
 	
-;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	FP_A     		.equr   r2
-	FP_B     		.equr   r3
-	FIXED_PRODUCT_RESULT    .equr   r4
-	LOWORD_MASK		.equr 	r5
-
-	FP_STEP1_OPERAND_1	.equr	r20
-	FP_STEP1_OPERAND_2	.equr	r21
-	FP_STEP2_OPERAND_1	.equr	r22
-	FP_STEP2_OPERAND_2	.equr	r23
-	FP_STEP3_OPERAND_1	.equr	r24
-	FP_STEP3_OPERAND_2	.equr	r25
-	FP_STEP4_OPERAND_1	.equr	r26
-	FP_STEP4_OPERAND_2	.equr	r27
-	FP_STEP5_OPERAND_1	.equr	r28
-	FP_STEP5_OPERAND_2	.equr	r29
-	FP_STEP6_OPERAND_1	.equr	r30
-	FP_STEP6_OPERAND_2	.equr	r19
-	
-	.phrase
-FIXED_PRODUCT:
-	GPU_REG_BANK_0
-	nop
-	nop
-	nop
-			
-	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
-	;; Result is returned in r5.	
-	movei   #$0000FFFF,LOWORD_MASK
-	movei   #0,FIXED_PRODUCT_RESULT
-
-	movefa	r17,FP_A
-	movefa	r18,FP_B
-	
-	;; Step 1: A.i * B.f
-	move	FP_A,FP_STEP1_OPERAND_1
-	move	FP_B,FP_STEP1_OPERAND_2
-	shrq	#16,FP_STEP1_OPERAND_1
-	and	LOWORD_MASK,FP_STEP1_OPERAND_2
-	mult	FP_STEP1_OPERAND_1,FP_STEP1_OPERAND_2
-	
-	;; Step 2: A.f * B.i
-	move  	FP_A,FP_STEP2_OPERAND_1
-	move  	FP_B,FP_STEP2_OPERAND_2
-	and     LOWORD_MASK,FP_STEP2_OPERAND_1
-	shrq    #16,FP_STEP2_OPERAND_2
-	mult    FP_STEP2_OPERAND_1,FP_STEP2_OPERAND_2
-
-	;; Pipeline step 1
-	add	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-	;; Step 3: (A.i * B.i) << 16
-	move	FP_A,FP_STEP3_OPERAND_1
-	move  	FP_B,FP_STEP3_OPERAND_2
-	shrq    #16,FP_STEP3_OPERAND_1
-	shrq    #16,FP_STEP3_OPERAND_2
-	mult    FP_STEP3_OPERAND_1,FP_STEP3_OPERAND_2
-	shlq    #16,FP_STEP3_OPERAND_2
-
-	;; Pipeline step 2
-	add     FP_STEP2_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-	;; Step 4: (A.f * B.f) >> 16
-	move  	FP_A,FP_STEP4_OPERAND_1
-	move  	FP_B,FP_STEP4_OPERAND_2
-	and     LOWORD_MASK,FP_STEP4_OPERAND_1
-	and     LOWORD_MASK,FP_STEP4_OPERAND_2
-	mult    FP_STEP4_OPERAND_1,FP_STEP4_OPERAND_2
-	shrq    #16,FP_STEP4_OPERAND_2
-
-	;; Pipeline step 3
-	add     FP_STEP3_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-.neg_a_check:           ; Is A negative? Add (-B.f) << 16 if so.
-	move  	FP_A,FP_STEP5_OPERAND_1
-	move	FP_B,FP_STEP5_OPERAND_2
-	and     LOWORD_MASK,FP_STEP5_OPERAND_2 ; get B.f
-	btst    #31,FP_STEP5_OPERAND_1 ; is A a negative number?
-	jr      eq,.neg_b_check
-	nop
-	
-	neg     FP_STEP5_OPERAND_2
-	shlq    #16,FP_STEP5_OPERAND_2
-	add     FP_STEP5_OPERAND_2,FIXED_PRODUCT_RESULT
-
-.neg_b_check:           ; Is B negative? Add (-A.f) << 16 if so.
-	move 	FP_A,FP_STEP6_OPERAND_1
-	move	FP_B,FP_STEP6_OPERAND_2
-	and     LOWORD_MASK,FP_STEP6_OPERAND_1 ; get A.f
-	btst    #31,FP_STEP6_OPERAND_2 ; is B a negative number?
-	jr      eq,.accumulate
-	nop
-	
-	neg     FP_STEP6_OPERAND_1
-	shlq    #16,FP_STEP6_OPERAND_1
-	add     FP_STEP6_OPERAND_1,FIXED_PRODUCT_RESULT
-
-.accumulate:
-	add     FP_STEP4_OPERAND_2,FIXED_PRODUCT_RESULT
-	nop
-	nop
-	nop
-
-.done:
-	GPU_REG_BANK_1
-	nop
-	nop
-	nop
-	movefa    FIXED_PRODUCT_RESULT,r5
-	nop
-	nop
-	nop
-	GPU_RTS
-
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
 FIXED_PRODUCT_BANK_1:
@@ -1252,11 +1039,7 @@ FIXED_PRODUCT_BANK_1:
 .done:
 	GPU_REG_BANK_0
 	nop
-	nop
-	nop
 	movefa    FIXED_PRODUCT_RESULT,r5
-	nop
-	nop
 	nop
 	GPU_RTS
 
