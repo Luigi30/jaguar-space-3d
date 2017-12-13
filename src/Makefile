@@ -38,6 +38,7 @@ RMACFLAGS = -i$(JAGINCLUDE)
 all: build
 
 build:	$(IMAGES) $(OBJFILES)
+	cp ../../u235/dsp.obj ../obj/u235.obj
 	$(DOCKER) $(CC) -v -O0 +jaguar.cfg -lm -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj
 
 clean:

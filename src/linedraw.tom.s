@@ -538,7 +538,7 @@ _gpu_project_and_draw_triangle::
 
 .perspective_divide:
 	;; Now we have the NDC coordinates for our three triangles.
-	;; Perform the perspective divide on each triangle.
+	;; Perform the perspective divide on each triangle.	
 	movei	#_gpu_tri_point_1,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
@@ -548,10 +548,8 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
-	movei	#.make_screen_coordinates,r30
-	jump	t,(r30)
-	nop
-
+	;; TODO: Why does this flip signs when incrementing the X rotation?
+	;; That shouldn't affect visibility at all - it's clockwise rotation.
 .determine_triangle_winding:
 	WIND_POINT_1	.equr	r6
 	WIND_POINT_2	.equr	r7
@@ -577,24 +575,26 @@ _gpu_project_and_draw_triangle::
 	VECTOR_V_Y	.equr	r29
 	VECTOR_V_Z	.equr	r30
 	
-	movei	#_gpu_tri_point_1,r10
-	movei	#_gpu_tri_point_2,r11
-	movei	#_gpu_tri_point_3,r12
+	movei	#_gpu_tri_point_1,r3
+	movei	#_gpu_tri_point_2,r4
+	movei	#_gpu_tri_point_3,r5
 
 	;; X
-	load	(r10),WIND_V0_X	
-	load	(r11),WIND_V1_X
-	load	(r12),WIND_V2_X	
+	load	(r3),WIND_V0_X	
+	load	(r4),WIND_V1_X
+	load	(r5),WIND_V2_X	
 	moveq	#4,r14
+	
 	;; Y
-	load	(r14+r10),WIND_V0_Y
-	load	(r14+r11),WIND_V1_Y
-	load	(r14+r12),WIND_V2_Y
+	load	(r14+r3),WIND_V0_Y
+	load	(r14+r4),WIND_V1_Y
+	load	(r14+r5),WIND_V2_Y
 	moveq	#8,r14
+
 	;; Z
-	load	(r14+r10),WIND_V0_Z
-	load	(r14+r11),WIND_V1_Z
-	load	(r14+r12),WIND_V2_Z
+	load	(r14+r3),WIND_V0_Z
+	load	(r14+r4),WIND_V1_Z
+	load	(r14+r5),WIND_V2_Z
 
 	;; http://cmichel.io/understanding-front-faces-winding-order-and-normals/
 	;; u = v1 - v0
@@ -602,6 +602,7 @@ _gpu_project_and_draw_triangle::
 	move	WIND_V0_X,TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_U_X
+	move	TEMP2,r2
 
 	move	WIND_V1_Y,TEMP2
 	move	WIND_V0_Y,TEMP1
@@ -640,6 +641,7 @@ _gpu_project_and_draw_triangle::
 
 	move	VECTOR_U_Z,r17
 	move	VECTOR_V_Y,r18
+
 	GPU_JSR FIXED_PRODUCT_BANK_1
 	sub	r5,r6
 	move	r6,r2
@@ -667,6 +669,14 @@ _gpu_project_and_draw_triangle::
 	GPU_JSR FIXED_PRODUCT_BANK_1
 	sub	r5,r6
 	move	r6,r4
+
+	move	VECTOR_U_X,r16
+	move	VECTOR_U_Y,r17
+	move	VECTOR_U_Z,r18
+
+	move	VECTOR_V_X,r20
+	move	VECTOR_V_Y,r21
+	move	VECTOR_V_Z,r22
 
 .normalize:
 	;; Normalize the vector at r2-r4.
@@ -718,6 +728,9 @@ _gpu_project_and_draw_triangle::
 
 	movei	#.advance_triangle,r30
 
+	;; Checked against R. Cross product and normalization are correct.
+	;; But the polygon flickers so the normal or dot product can't be right
+
 	;; Result is (r2,r3,r4).
 	;; Now create a vector from the camera to the triangle's p1.
 	movei	#_gpu_tri_point_1,r10
@@ -729,30 +742,31 @@ _gpu_project_and_draw_triangle::
 
 	moveq	#0,r20
 	moveq	#0,r21
-	movei	#$00040000,r22
-
-	sub	r20,r11
-	sub	r21,r12
-	sub	r22,r13
+	movei	#$00050000,r22
+	
+	sub	r11,r20
+	sub	r12,r21
+	sub	r13,r22
 
 	;; Calculate the dot product of V and p1 vector
 	move	r2,r17
-	move	r11,r18
+	move	r20,r18
 	GPU_JSR	FIXED_PRODUCT_BANK_1
 	move	r5,r6
-
-	move	r3,r17
-	move	r12,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r5,r6
-
-	move	r2,r17
-	move	r13,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r5,r6
 	
-*	jump	pl,(r30)	; if surface normal is negative, it's visible?
-*	nop
+	move	r3,r17
+	move	r21,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r5,r6
+
+	move	r4,r17
+	move	r22,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	add	r5,r6
+
+	btst	#31,r6
+	jump	ne,(r30)	; if surface normal is positive, it's visible
+	nop
 
 .make_screen_coordinates:
 	movei	#_gpu_tri_point_1,r10
@@ -818,6 +832,7 @@ _gpu_project_and_draw_triangle::
 	
 	StopGPU
 	nop
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Perspective divide function.
 ;;; Takes a pointer to a Vector4FX in TEMP1 and stores the result back to it.
@@ -825,57 +840,20 @@ _gpu_project_and_draw_triangle::
 _gpu_perspective_divide:
 	move	TEMP1,r10	; store the Vector4FX pointer
 
-	movei	#1,TEMP1	; set the divide unit for fixed-point
-	movei	#G_DIVCTRL,TEMP2
-	store	TEMP1,(TEMP2)
-	nop
-	
-	movei	#$FFFFFFFF,r29	; -1.0
-	movei	#$7FFFFFFF,r28	; xor value for negating a quotient
-	movei	#$00010000,r27	; fixed-point 1.0
-
+.perspective_divide_x:
 	move	r10,TEMP1
 	load	(TEMP1),TEMP1	; grab the X coordinate
 	move	r10,TEMP2
 	addq	#12,TEMP2
 	load	(TEMP2),TEMP2
 
-.test_dividend_sign_x:
-	btst	#31,TEMP1
-	jr	eq,.test_divisor_sign_x	;skip to the divisor if the number is positive
-	movei	#0,DIVIDEND_IS_NEGATIVE
-
-	;; The dividend is negative.
-	xor	r29,TEMP1	; take the absolute value of the dividend
-	addq	#1,TEMP1
-	movei	#1,DIVIDEND_IS_NEGATIVE
-
-.test_divisor_sign_x:
-	btst	#31,TEMP2
-	jr	eq,.do_divide_x	; skip to the divide if the number is positive
-	movei	#0,DIVISOR_IS_NEGATIVE
+	move	TEMP1,r20
+	move	TEMP2,r21
 	
-	xor	r29,TEMP2
-	addq    #1,TEMP2
-	movei	#1,DIVISOR_IS_NEGATIVE
-
-.do_divide_x:
-	div	TEMP2,TEMP1	; TEMP1 = TEMP1 / TEMP2
-	or	TEMP1,TEMP1
-
-	movei	#0,r4
-	add	DIVISOR_IS_NEGATIVE,r4
-	add	DIVIDEND_IS_NEGATIVE,r4
-	cmpq	#1,r4
-	jr	ne,.store_divided_x
-	nop
-
-	bset	#31,TEMP1
-	xor	r28,TEMP1
-	addq	#1,TEMP1
-
-.store_divided_x:
+	GPU_JSR	FIXED_DIV
 	store	TEMP1,(r10)
+
+	move	TEMP1,r22
 	
 .perspective_divide_y:
 	addq	#4,r10
@@ -884,42 +862,13 @@ _gpu_perspective_divide:
 	addq	#8,TEMP2	; grab the W coordinate
 	load	(TEMP2),TEMP2
 
-.test_dividend_sign_y:
-	btst	#31,TEMP1
-	jr	eq,.test_divisor_sign_y	;skip to the divisor if the number is positive
-	movei	#0,DIVIDEND_IS_NEGATIVE
-
-	;; The dividend is negative.
-	xor	r29,TEMP1	; take the absolute value of the dividend
-	addq	#1,TEMP1
-	movei	#1,DIVIDEND_IS_NEGATIVE
-
-.test_divisor_sign_y:
-	btst	#31,TEMP2
-	jr	eq,.do_divide_y	; skip to the divide if the number is positive
-	movei	#0,DIVISOR_IS_NEGATIVE
+	move	TEMP1,r20
+	move	TEMP2,r21
 	
-	xor	r29,TEMP2
-	addq    #1,TEMP2
-	movei	#1,DIVISOR_IS_NEGATIVE
-
-.do_divide_y:	
-	div	TEMP2,TEMP1	; TEMP1 = TEMP1 / TEMP2
-	or	TEMP1,TEMP1
-
-	movei	#0,r4
-	add	DIVISOR_IS_NEGATIVE,r4
-	add	DIVIDEND_IS_NEGATIVE,r4
-	cmpq	#1,r4
-	jr	ne,.store_divided_y
-	nop
-
-	bset	#31,TEMP1
-	xor	r28,TEMP1
-	addq	#1,TEMP1
-
-.store_divided_y:
+	GPU_JSR	FIXED_DIV
 	store	TEMP1,(r10)
+
+	move	TEMP1,r22
 
 .perspective_divide_z:
 	addq	#4,r10
@@ -927,48 +876,8 @@ _gpu_perspective_divide:
 	move	r10,TEMP2
 	addq	#4,TEMP2	; grab the W coordinate
 	load	(TEMP2),TEMP2
-
-.test_dividend_sign_z:
-	btst	#31,TEMP1
-	jr	eq,.test_divisor_sign_z	;skip to the divisor if the number is positive
-	movei	#0,DIVIDEND_IS_NEGATIVE
-
-	;; The dividend is negative.
-	xor	r29,TEMP1	; take the absolute value of the dividend
-	addq	#1,TEMP1
-	movei	#1,DIVIDEND_IS_NEGATIVE
-
-.test_divisor_sign_z:
-	btst	#31,TEMP2
-	jr	eq,.do_divide_z	; skip to the divide if the number is positive
-	movei	#0,DIVISOR_IS_NEGATIVE
-	
-	xor	r29,TEMP2
-	addq    #1,TEMP2
-	movei	#1,DIVISOR_IS_NEGATIVE
-
-.do_divide_z:
-	div	TEMP2,TEMP1	; TEMP1 = TEMP1 / TEMP2
-	or	TEMP1,TEMP1
-
-	movei	#0,r4
-	add	DIVISOR_IS_NEGATIVE,r4
-	add	DIVIDEND_IS_NEGATIVE,r4
-	cmpq	#1,r4
-	jr	ne,.store_divided_z
-	nop
-
-	bset	#31,TEMP1
-	xor	r28,TEMP1
-	addq	#1,TEMP1
-
-.store_divided_z:
+	GPU_JSR	FIXED_DIV
 	store	TEMP1,(r10)
-
-	movei	#0,TEMP1
-	movei	#G_DIVCTRL,TEMP2
-	store	TEMP1,(TEMP2)
-	nop
 	
 	GPU_RTS
 _gpu_project_and_draw_triangle_end::
@@ -1138,120 +1047,7 @@ _gpu_matrix_vector_product:
 	nop
 	GPU_RTS
 
-;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-FIXED_DIV:
-	;; Fixed-point divide.
-	;; TEMP1 = TEMP1 / TEMP2
-	movei	#1,r2	; set the divide unit for fixed-point divide
-	movei	#G_DIVCTRL,r3
-	store	r2,(r3)
-	nop
-	
-	DIV_DIVISOR_IS_NEGATIVE		.equr	r3
-	DIV_DIVIDEND_IS_NEGATIVE	.equr	r4
-	DIV_MINUS_ONE			.equr	r5
-	DIV_7FFFFFFF			.equr	r6
-
-	movei	#$FFFFFFFF,DIV_MINUS_ONE	; -1.0
-	movei	#$7FFFFFFF,DIV_7FFFFFFF		; xor value for negating a quotient
-	
-.test_dividend_sign:
-	btst	#31,TEMP1
-	jr	eq,.test_divisor_sign	;skip to the divisor if the number is positive
-	movei	#0,DIV_DIVIDEND_IS_NEGATIVE
-
-	;; The dividend is negative.
-	xor	DIV_MINUS_ONE,TEMP1	; take the absolute value of the dividend
-	addq	#1,TEMP1
-	movei	#1,DIV_DIVIDEND_IS_NEGATIVE
-
-.test_divisor_sign:
-	btst	#31,TEMP2
-	jr	eq,.do_divide		; skip to the divide if the number is positive
-	movei	#0,DIV_DIVISOR_IS_NEGATIVE
-	
-	xor	DIV_MINUS_ONE,TEMP2
-	addq    #1,TEMP2
-	movei	#1,DIV_DIVISOR_IS_NEGATIVE
-
-.do_divide:
-	div	TEMP2,TEMP1		; TEMP1 = TEMP1 / TEMP2
-	or	TEMP1,TEMP1
-
-	movei	#0,r2
-	add	DIV_DIVISOR_IS_NEGATIVE,r2
-	add	DIV_DIVIDEND_IS_NEGATIVE,r2
-	cmpq	#1,r2
-	jr	ne,.return_divided
-	nop
-
-	bset	#31,TEMP1
-	xor	DIV_7FFFFFFF,TEMP1
-	addq	#1,TEMP1
-
-	movei	#0,r2		; set the divide unit for integer divide
-	movei	#G_DIVCTRL,r3
-	store	r2,(r3)
-	nop
-
-.return_divided:
-	GPU_RTS
-
-;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-FIXED_SQRT:
-	;; Calculate the square root of r0.
-	;; Returned in r0.
-	FRACBITS	.equ	16
-	ITERS		.equ	(15 + (FRACBITS >> 1))
-
-	SQRT_ROOT	.equr	r20
-	SQRT_REM_HI	.equr	r21
-	SQRT_REM_LO	.equr	r22
-	SQRT_TEST_DIV	.equr	r23
-	SQRT_COUNT	.equr	r24
-
-	SQRT_THIRTY	.equr	r25
-	SQRT_LOOP_CHECK	.equr	r29
-	SQRT_LOOP_ADDR	.equr	r30
-
-	moveq	#0,SQRT_ROOT
-	moveq	#0,SQRT_REM_HI
-	move	r0,SQRT_REM_LO
-	moveq	ITERS,SQRT_COUNT
-
-	moveq	#30,SQRT_THIRTY
-	movei	#.sqrt_loop,SQRT_LOOP_ADDR
-	movei	#.sqrt_do_loop,SQRT_LOOP_CHECK
-
-.sqrt_loop:
-	shlq	#2,SQRT_REM_HI
-	move	SQRT_REM_LO,TEMP1
-	sh	SQRT_THIRTY,TEMP1
-	or	TEMP1,SQRT_REM_HI
-	shlq	#2,SQRT_REM_LO
-
-	shlq	#1,SQRT_ROOT
-	move	SQRT_ROOT,SQRT_TEST_DIV
-	shlq	#1,SQRT_TEST_DIV
-	addq	#1,SQRT_TEST_DIV
-
-	cmp	SQRT_TEST_DIV,SQRT_REM_HI
-	jump	ge,(SQRT_LOOP_CHECK) ;if remHi >= testDiv
-	nop
-
-	sub	SQRT_TEST_DIV,SQRT_REM_HI
-	addq	#1,SQRT_ROOT
-
-.sqrt_do_loop:
-	subq	#1,SQRT_COUNT
-
-	cmpq	#-1,SQRT_COUNT
-	jump	ne,(SQRT_LOOP_ADDR) ; if not -1, keep looping
-	nop
-
-	move	SQRT_ROOT,r0
-
-	GPU_RTS
+	.include "fixed.risc.inc"
 	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	FP_A     		.equr   r2

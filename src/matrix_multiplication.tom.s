@@ -348,9 +348,9 @@ _gpu_matrix_rotation::
 	movei	#_gpu_matrix_ptr_vector,TEMP1
 	load	(TEMP1),TEMP2
 	load	(TEMP2),X_DEGREES
-	addq	#4,TEMP1
+	addq	#4,TEMP2
 	load	(TEMP2),Y_DEGREES
-	addq	#4,TEMP1
+	addq	#4,TEMP2
 	load	(TEMP2),Z_DEGREES
 
 .get_sin_X_cos_X:

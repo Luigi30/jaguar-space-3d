@@ -240,7 +240,6 @@ int main() {
 	//skunkCONSOLEWRITE("Building view matrix\n");
 	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
-	//TODO: This crashes if we reach 180 degrees in all 3 directions?
     cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
     cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
     cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
@@ -340,8 +339,6 @@ int main() {
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
-	
-	//while(true) {};
 	
 	/*
     sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);
