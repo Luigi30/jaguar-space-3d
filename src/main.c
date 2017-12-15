@@ -182,7 +182,7 @@ int main() {
 	//Init cube
 	Shape cube;
 	cube.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(181), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
 	cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
 	cube.triangles = cube_triangles;
 
@@ -241,8 +241,8 @@ int main() {
 	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
     cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
-    cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
-    cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+    //cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+    //cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 

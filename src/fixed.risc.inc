@@ -2,7 +2,7 @@
 ; Fixed-point math function library and macros
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; ; Dot product (v1,v2) => result
+;;; Dot product (v1,v2) => result
 	.macro FIXED_DOT_PRODUCT v1x,v1y,v1z,v2x,v2y,v2z,result
 		move	\v1x,r17
 		move	\v2x,r18
@@ -19,8 +19,6 @@
 		GPU_JSR	FIXED_PRODUCT_BANK_1
 		add	r5,\result
 	.endm
-
-
 
 	FP_A     		.equr   r2
 	FP_B     		.equr   r3

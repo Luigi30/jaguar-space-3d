@@ -13,6 +13,7 @@
 	.include "jaguar.inc"
 	.include "3d_types.risc.inc"
 	.globl	_back_buffer
+	.globl	_front_buffer
 	.globl	_scanline_offset_table
 	.globl  _VIEW_EYE
 	
@@ -74,85 +75,6 @@ _blit_wireframe_triangle::
 	movei	#stack_bank_1_end,SP
 	
 setup_blit:
-	GPU_REG_BANK_0
-;; Set up registers for writing
-	movei	#A1_BASE,B_A1_BASE
-	movei	#A1_PIXEL,B_A1_PIXEL
-	movei	#A1_FPIXEL,B_A1_FPIXEL
-	movei	#A1_INC,B_A1_INC
-	movei	#A1_FINC,B_A1_FINC
-	movei	#A1_FLAGS,B_A1_FLAGS
-	movei	#A1_STEP,B_A1_STEP
-	movei	#B_PATD,B_B_PATD
-	movei	#B_COUNT,B_B_COUNT
-	movei	#B_CMD,B_B_CMD
-	
-	GPU_REG_BANK_1
-
-do_blit_triangle:
-	;; Blit a triangle using the vertexes at ptr_vertex_array
-	;; The points will be (p0.x,p0.y),(p1.x,p1.y), (p1.x,p1.y),(p2.x,p2.y), (p2.x,p2.y),(p0.x,p0.y)
-	;; TODO: colors besides white
-
-*	movei	#_ptr_vertex_array,PTR_VERTEXES
-* 	load	(PTR_VERTEXES),PTR_VERTEXES
-	
-.draw_line_1:
-*	movei	#0,r14
-*	movei	#16,r15
-*	load	(r14+PTR_VERTEXES),LINE_X1
-*	load	(r15+PTR_VERTEXES),LINE_X2
-*	movei	#4,r14
-*	movei	#20,r15
-*	load	(r14+PTR_VERTEXES),LINE_Y1
-*	load	(r15+PTR_VERTEXES),LINE_Y2
-
-*	moveta	LINE_X1,LINE_X1
-*	moveta	LINE_X2,LINE_X2
-*	moveta	LINE_Y1,LINE_Y1
-*	moveta	LINE_Y2,LINE_Y2
-
-*	GPU_JSR	#do_blit_line
-
-.draw_line_2:
-*	movei	#_ptr_vertex_array,PTR_VERTEXES
-* 	load	(PTR_VERTEXES),PTR_VERTEXES
-	
-*	movei	#16,r14
-*	movei	#32,r15
-*	load	(r14+PTR_VERTEXES),LINE_X1
-*	load	(r15+PTR_VERTEXES),LINE_X2
-*	movei	#20,r14
-*	movei	#36,r15
-*	load	(r14+PTR_VERTEXES),LINE_Y1
-*	load	(r15+PTR_VERTEXES),LINE_Y2
-*
-*	moveta	LINE_X1,LINE_X1
-*	moveta	LINE_X2,LINE_X2
-*	moveta	LINE_Y1,LINE_Y1
-*	moveta	LINE_Y2,LINE_Y2
-
-*	GPU_JSR	#do_blit_line
-
-.draw_line_3:
-*	movei	#_ptr_vertex_array,PTR_VERTEXES
-* 	load	(PTR_VERTEXES),PTR_VERTEXES
-	
-*	movei	#32,r14
-*	movei	#0,r15
-*	load	(r14+PTR_VERTEXES),LINE_X1
-*	load	(r15+PTR_VERTEXES),LINE_X2
-*	movei	#36,r14
-*	movei	#4,r15
-*	load	(r14+PTR_VERTEXES),LINE_Y1
-*	load	(r15+PTR_VERTEXES),LINE_Y2
-
-*	moveta	LINE_X1,LINE_X1
-*	moveta	LINE_X2,LINE_X2
-*	moveta	LINE_Y1,LINE_Y1
-*	moveta	LINE_Y2,LINE_Y2
-
-*	GPU_JSR	#do_blit_line
 	
 	GPU_REG_BANK_0
 	GPU_RTS
@@ -164,283 +86,6 @@ do_blit_triangle:
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;
 	
 do_blit_line:
-	GPU_REG_BANK_0
-	
-	WAIT_FOR_BLITTER_IDLE	
-	LOCK_BLITTER
-	TAKE_BLIT_PRIORITY
-
-	;; X1 > X2? Swap the points if so.
-	cmp	LINE_X1,LINE_X2
-	jr	hi,.calculateDistances
-	nop
-
-	move	LINE_X1,TEMP1
-	move	LINE_X2,LINE_X1
-	move	TEMP1,LINE_X2
-
-	move	LINE_Y1,TEMP1
-	move	LINE_Y2,LINE_Y1
-	move	TEMP1,LINE_Y2
-	
-.calculateDistances:	
-	;Calculate abs(x2-x1) and abs(y2-y1)
-	move	LINE_X2,X_DIST
-	move	LINE_Y2,Y_DIST
-	sub	LINE_X1,X_DIST
-	sub	LINE_Y1,Y_DIST
-	abs	X_DIST
-	abs	Y_DIST
-
-.preset_registers:
-	;Set up for 16.16 divide
-	moveq	#1,TEMP1
-	movei	#G_DIVCTRL,TEMP2
-	store	TEMP1,(TEMP2)
-
-	;; pre-set the blit registers
-	movei	#_back_buffer,TEMP1
-	load	(TEMP1),TEMP1
-	store	TEMP1,(B_A1_BASE)
-
-	movei	#_line_clut_color,TEMP2
-	load	(TEMP2),TEMP1
-	store	TEMP1,(B_B_PATD)
-
-	movei	#0,TEMP1
-	movei	#A1_CLIP,TEMP2
-	store	TEMP1,(TEMP2)
-	
-.draw_line:
-	movei	#dy_greater,TEMP1
-	movei	#dx_greater,TEMP2
-	movei	#dx_equals_dy,JUMPADDR
-	cmp	X_DIST,Y_DIST
-	jump	hi,(TEMP1) 	;dy_greater
-	nop
-	jump	eq,(JUMPADDR)	;dx_equals_dy
-	nop
-	jump	t,(TEMP2)	;dx_greater
-	nop
-
-dy_greater:
-
-.calc_slope:
-	move	X_DIST,DIVIDEND
-	move	Y_DIST,DIVISOR
-
-	;; dx / dy
-	div	DIVISOR,DIVIDEND	;destination / source
-	or	DIVIDEND,DIVIDEND
-	move	DIVIDEND,SLOPE		;slope = DIVISOR/DIVIDEND
-	
-	movei	#.y2_is_greater,JUMPADDR
-	cmp	LINE_Y1,LINE_Y2	
-	jump	cc,(JUMPADDR)
-	nop
-	jump	eq,(JUMPADDR)
-	nop
-
-.y1_is_greater:
-	;; YINC = -1
-	;; XINC = (dx<<16) / dy
-
-	movei	#$FFFF0000,TEMP1
-	store	TEMP1,(B_A1_INC)
-	store	SLOPE,(B_A1_FINC)
-
-	movei	#.set_registers,JUMPADDR
-	jump	t,(JUMPADDR)
-	nop
-
-.y2_is_greater:
-	;; YINC = 1
-	;; XINC = (dx<<16) / dy
-
-	movei	#$00010000,TEMP1
-	store	TEMP1,(B_A1_INC)
-	store	SLOPE,(B_A1_FINC)
-	
-.set_registers:
-	move	LINE_X1,r18
-	move	LINE_Y1,r19
-	shrq	#16,r18
-	shrq	#16,r19
-	
-	BLIT_XY	r18,r19
-	store	TEMP1,(B_A1_PIXEL)
-
-	movei	#$00C80140,TEMP1
-	movei	#A1_CLIP,TEMP2
-	store	TEMP1,(TEMP2)
-
-	movei	#0,TEMP1
-	movei	#PITCH1|PIXEL8|WID320|XADDINC,TEMP2
-	
-	store	TEMP1,(B_A1_FPIXEL)
-	store	TEMP2,(B_A1_FLAGS)
-
-	movei	#$00000000,TEMP1
-	store	TEMP1,(B_A1_STEP)
-
-	movei	#blit_line_done,JUMPADDR
-	cmpq	#0,Y_DIST
-	jump	eq,(JUMPADDR)
-	nop
-	
-	move	Y_DIST,TEMP1
-	movei	#$FFFF0000,TEMP2
-	and	TEMP2,TEMP1
-	addq	#1,TEMP1
-	store	TEMP1,(B_B_COUNT)
-	
-	movei	#blit_line_go,JUMPADDR
-	jump	t,(JUMPADDR)
-	nop
-	
-;;; 
-dx_greater:
-
-.calc_slope:
-	move	Y_DIST,DIVIDEND
-	move	X_DIST,DIVISOR
-	
-	;Set up for 16.16 divide
-	moveq	#1,TEMP1
-	movei	#G_DIVCTRL,TEMP2
-	store	TEMP1,(TEMP2)
-
-	;; dy / dx
-	div	DIVISOR,DIVIDEND	;destination / source
-	or	DIVIDEND,DIVIDEND
-	move	DIVIDEND,SLOPE		;slope = DIVISOR/DIVIDEND
-
-	movei	#.y2_is_greater,JUMPADDR
-	cmp	LINE_Y1,LINE_Y2	
-	jump	cc,(JUMPADDR)
-	nop
-	jump	eq,(JUMPADDR)
-	nop
-
-;;; if y1 > y2
-.y1_greater:
-	;; YINC = 65536 - ((dy<<16)/dx)
-	movei	#65536,TEMP1
-	sub	SLOPE,TEMP1
-
-	movei	#$FFFF0001,TEMP2
-	store	TEMP2,(B_A1_INC)
-
-	shlq	#16,TEMP1
-	store	TEMP1,(B_A1_FINC)
-
-	movei	#.set_registers,JUMPADDR
-	jump	t,(JUMPADDR)
-	nop
-
-.y2_is_greater:
-	;; YINC = (dy<<16) / dx
-	movei	#$00000001,TEMP1 
-	store	TEMP1,(B_A1_INC) 
-
-	move	SLOPE,TEMP1
-	shlq	#16,TEMP1
-	store	TEMP1,(B_A1_FINC)
-
-.set_registers:
-	;; A1_PIXEL = LINE_X1,LINE_Y1
-	move	LINE_X1,r18
-	move	LINE_Y1,r19
-	shrq	#16,r18
-	shrq	#16,r19
-	
-	BLIT_XY	r18,r19
-	store	TEMP1,(B_A1_PIXEL)
-
-	movei	#0,TEMP1
-	movei	#PITCH1|PIXEL8|WID320|XADDINC,TEMP2
-	
-	store	TEMP1,(B_A1_FPIXEL)
-	store	TEMP2,(B_A1_FLAGS)
-
-	movei	#$00000000,TEMP1
-	store	TEMP1,(B_A1_STEP)
-	
-	;; B_COUNT  = 1<<16 + X_DIST>>16
-	movei	#blit_line_done,JUMPADDR
-	cmpq	#0,X_DIST
-	jump	eq,(JUMPADDR)
-	
-	move	X_DIST,TEMP1
-	shrq	#16,TEMP1
-	addq	#1,TEMP1
-	movei	#$00010000,TEMP2
-	add	TEMP2,TEMP1
-	store	TEMP1,(B_B_COUNT)
-	
-	movei	#blit_line_go,JUMPADDR
-	jump	t,(JUMPADDR)
-	nop
-
-dx_equals_dy:
-	cmp	LINE_Y1,LINE_Y2	
-	jr	hi,.y2_is_greater
-	nop
-	
-.y1_is_greater:
-	movei	#$FFFF0001,r20
-	store	r20,(B_A1_INC)
-	jr	t,.set_registers
-	nop
-	
-.y2_is_greater:
-	movei	#$00010001,r20
-	store	r20,(B_A1_INC)
-	
-.set_registers:
-	move	LINE_X1,r18
-	move	LINE_Y1,r19
-	shrq	#16,r18
-	shrq	#16,r19
-	
-	BLIT_XY	r18,r19
-	store	TEMP1,(B_A1_PIXEL)
-
-	movei	#0,TEMP1
-	store	TEMP1,(B_A1_FPIXEL)
-	store	TEMP1,(B_A1_FINC)
-
-	movei	#blit_line_done,JUMPADDR
-	cmpq	#0,Y_DIST
-	jump	eq,(JUMPADDR)
-	
-	move	Y_DIST,TEMP1
-	movei	#$FFFF0000,TEMP2
-	and	TEMP2,TEMP1
-	addq	#1,TEMP1
-	move	TEMP1,r5
-	store	TEMP1,(B_B_COUNT)
-
-blit_line_go:
-	movei	#$00C80140,TEMP1
-	movei	#A1_CLIP,TEMP2
-	store	TEMP1,(TEMP2)
-
-	;; clear unused registers
-	movei	#0,TEMP1	
-	movei	#PITCH1|PIXEL8|WID320|XADDINC,TEMP1
-	store	TEMP1,(B_A1_FLAGS)
-	
-	movei	#PATDSEL|UPDA1|UPDA1F|CLIP_A1|LFU_S,TEMP1
-	store	TEMP1,(B_B_CMD)
-
-	;; wait for blit to complete
-	WAIT_FOR_BLITTER_IDLE
-	
-blit_line_done:	
-	UNLOCK_BLITTER
-
-	GPU_REG_BANK_1
 	GPU_RTS
 	
 	.phrase
@@ -455,6 +100,10 @@ _ptr_current_triangle:		dcb.l	1,0
 	.phrase
 _tri_slope1:			dcb.l	1,0
 _tri_slope2:			dcb.l  	1,0
+
+tri_x4:	dcb.l	1,0
+tri_y4:	dcb.l	1,0
+general_case:	dcb.l	1,0
 	
 	.phrase
 _blit_filled_triangle:
@@ -492,7 +141,7 @@ _blit_filled_triangle:
 	movei	#.swap1_do,r29
 
 	cmp	r23,r24
-	jump	pl,(r30) 	; if y2 >= y1, skip
+	jump	mi,(r29) 	; if y2 >= y1, skip
 	nop	
 	jump	ne,(r30)	; && y1 != y2, skip
 	nop
@@ -520,16 +169,23 @@ _blit_filled_triangle:
 	subq	#16,r21
 
 .swap2:
+	load	(r15+r20),r23	; get Y coordinates
+	load	(r15+r21),r24
+	load	(r15+r22),r25
+	load	(r14+r20),r26	; get X coordinates
+	load	(r14+r21),r27
+	load	(r14+r22),r28
+	
 	movei	#.swap3,r30
 	movei	#.swap2_do,r29
 
 	cmp	r24,r25
-	jump	pl,(r30) 	; if y2 > y3, swap
+	jump	mi,(r29) 	; if y2 > y3, swap
 	nop	
-	jump	ne,(r30)	; if y2 != y3, swap
+	jump	ne,(r30)	; if y2 == y3...
 	nop
 	cmp	r27,r28
-	jump	lo,(r30)	; if y2 == y3 && x2 > x3, swap. is this correct?
+	jump	lo,(r30)	; ...and x2 > x3, swap.
 	nop
 	
 	;; y3 > y2 or x3 > x2. Swap v3 and v2.
@@ -552,13 +208,20 @@ _blit_filled_triangle:
 	subq	#16,r22
 
 .swap3:
+	load	(r15+r20),r23	; get Y coordinates
+	load	(r15+r21),r24
+	load	(r15+r22),r25
+	load	(r14+r20),r26	; get X coordinates
+	load	(r14+r21),r27
+	load	(r14+r22),r28
+	
 	movei	#.swaps_done,r30
 	movei	#.swap3_do,r29
 
 	cmp	r23,r24
-	jump	pl,(r30) 	; if y1 > y2, swap
+	jump	mi,(r29) 	; if y1 > y2, swap
 	nop	
-	jump	ne,(r30)	; if y1 != y2, swap
+	jump	ne,(r30)	; if y1 == y2...
 	nop
 	cmp	r26,r27
 	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap. is this correct?
@@ -584,26 +247,201 @@ _blit_filled_triangle:
 	subq	#16,r21
 
 .swaps_done:
+	load	(r14+r20),r23	; get X coordinates
+	load	(r14+r21),r24
+	load	(r14+r22),r25
+	load	(r15+r20),r26	; get Y coordinates
+	load	(r15+r21),r27
+	load	(r15+r22),r28
 
-	;; OK, now ptr_vertex_array is in the correct order.
-.flat_top_triangle:
+	movei	#general_case,TEMP1
+	moveq	#0,TEMP2
+	store	TEMP2,(TEMP1)
 	
-.calculate_slopes:
+	;; OK, now ptr_vertex_array is in the correct order.
+	GPU_JSR	_load_vertex_data_for_polyfill
+
+	;; if v1.y == v2.y, this is a flat-top triangle.
+	movei	#.draw_flat_top_only,r30
+	cmp	r26,r27
+	jump	eq,(r30)
+	nop
+	
+	;; if v2.y == v3.y, this is a flat-bottom triangle.
+	movei	#.draw_flat_bottom_only,r30
+	cmp	r27,r28
+	jump	eq,(r30)
+	nop
+
+	;; Flat-top and flat-bottom triangles work, but the general case seems to be wrong
+.draw_general_case:
+	;; RTS if we already drew a trivial case
+	movei	#general_case,TEMP1
+	load	(TEMP1),TEMP2
+	cmpq	#0,TEMP2
+	jr	eq,.do_general
+
+	GPU_RTS
+
+.do_general:	
+*	load	(r14+r20),r23	; v1.x
+*	load	(r14+r21),r24	; v2.x
+*	load	(r14+r22),r25	; v3.x
+*	load	(r15+r20),r26	; v1.y
+*	load	(r15+r21),r27	; v2.y
+*	load	(r15+r22),r28	; v3.y
+	
+	;; OK, now calculate x4.
+	;; x4 = x1 + ((y2-y1)/(y3-y1)) * (x3-x1)
+	movei	#tri_x4,r20
+	movei	#tri_y4,r21
+
+	move	r27,r10
+	move	r28,r11
+	sub	r26,r10
+	sub	r26,r11
+
+	move	r10,TEMP1
+	move	r11,TEMP2
+	
+	GPU_JSR	FIXED_DIV
+	move	TEMP1,r17	; r17 = (y2-y1)/(y3-y1)
+
+	move	r25,r18
+	sub	r23,r18		; r18 = x3-x1
+
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	
+	add	r23,r5		; r5 = x4
+	move	r27,r6		; r6 = y4 = y2
+	store	r5,(r20)
+	store	r6,(r21)
+	
+;;; Flat-top triangle - (v2, v4, v3)
+	GPU_JSR	_load_vertex_data_for_polyfill
+
+	moveta	r28,POLYFILL_SCANLINE_START
+	moveta	r27,POLYFILL_SCANLINE_END
+
+	move	r25,TEMP1
+	sub	r24,TEMP1	; TEMP1 = v3.x - v2.x
+	move	r28,TEMP2
+	sub	r27,TEMP2	; TEMP2 = v3.y - v2.y
+	GPU_JSR FIXED_DIV	; (v3.x - v2.x) / (v3.x - v2.x)
+	movei	#_tri_slope1,TEMP2
+	store	TEMP1,(TEMP2)
+
+	movei	#tri_x4,r20
+	movei	#tri_y4,r21
+	load	(r20),r5
+	load	(r21),r6
+
+	move	r25,TEMP1
+	sub	r5,TEMP1	; TEMP1 = v3.x - v4.x
+	move	r28,TEMP2
+	sub	r6,TEMP2	; TEMP2 = v3.y - v4.y
+	
+	GPU_JSR FIXED_DIV	; (v3.x - v4.x) / (v3.x - v4.x)
+	movei	#_tri_slope2,TEMP2
+	store	TEMP1,(TEMP2)
+
+	moveta	r25,POLYFILL_CUR_X1
+	moveta	r25,POLYFILL_CUR_X2
+	
+	GPU_JSR	_do_fill_flattop_polygon
+
+;;; Flat-bottom triangle - (v1, v2, v4)
+	GPU_JSR	_load_vertex_data_for_polyfill
+
+*	load	(r14+r20),r23	; v1.x
+*	load	(r14+r21),r24	; v2.x
+*	load	(r14+r22),r25	; v3.x
+*	load	(r15+r20),r26	; v1.y
+*	load	(r15+r21),r27	; v2.y
+*	load	(r15+r22),r28	; v3.y
+
+	move	r24,TEMP1
+	sub	r23,TEMP1	; TEMP1 = v2.x - v1.x
+	move	r27,TEMP2
+	sub	r26,TEMP2	; TEMP2 = v2.y - v1.y
+	GPU_JSR FIXED_DIV	; (v2.x - v1.x) / (v2.y - v1.y)
+	movei	#_tri_slope1,TEMP2
+	store	TEMP1,(TEMP2)
+
+	movei	#tri_x4,r20
+	movei	#tri_y4,r21
+	load	(r20),r5
+	load	(r21),r6
+
+	moveta	r26,POLYFILL_SCANLINE_START
+	moveta	r6,POLYFILL_SCANLINE_END
+	
+	move	r5,TEMP1
+	sub	r23,TEMP1	; TEMP1 = v4.x - v1.x
+	move	r6,TEMP2
+	sub	r26,TEMP2	; TEMP2 = v4.y - v1.y
+	GPU_JSR FIXED_DIV	; (v4.x - v1.x) / (v4.y - v1.y)
+	movei	#_tri_slope2,TEMP2
+	store	TEMP1,(TEMP2)
+	
+	moveta	r23,POLYFILL_CUR_X1
+	moveta	r23,POLYFILL_CUR_X2
+	
+	GPU_JSR	_do_fill_flatbottom_polygon
+	
+	GPU_RTS
+
+.draw_flat_bottom_only:
+	movei	#general_case,TEMP1
+	moveq	#1,TEMP2
+	store	TEMP2,(TEMP1)
+	
+	GPU_JSR	_load_vertex_data_for_polyfill
+
+	move	r24,TEMP1
+	sub	r23,TEMP1	; TEMP1 = v2.x - v1.x
+	move	r27,TEMP2
+	sub	r26,TEMP2	; TEMP2 = v2.y - v1.y
+	GPU_JSR FIXED_DIV	; (v2.x - v1.x) / (v2.x - v1.x)
+	movei	#_tri_slope1,TEMP2
+	store	TEMP1,(TEMP2)
+	
+	move	r25,TEMP1
+	sub	r23,TEMP1	; TEMP1 = v3.x - v1.x
+	move	r28,TEMP2
+	sub	r26,TEMP2	; TEMP2 = v3.y - v1.y
+	GPU_JSR FIXED_DIV	; (v3.x - v1.x) / (v3.x - v1.x)
+	movei	#_tri_slope2,TEMP2
+	store	TEMP1,(TEMP2)
+
+	moveta	r23,POLYFILL_CUR_X1
+	moveta	r23,POLYFILL_CUR_X2
+	moveta	r26,POLYFILL_SCANLINE_START
+	moveta	r27,POLYFILL_SCANLINE_END
+	
+	GPU_JSR	_do_fill_flatbottom_polygon
+	GPU_RTS	
+
+.draw_flat_top_only:
+	movei	#general_case,TEMP1
+	moveq	#1,TEMP2
+	store	TEMP2,(TEMP1)
+
 	GPU_JSR	_load_vertex_data_for_polyfill
 
 	move	r25,TEMP1
 	sub	r23,TEMP1	; TEMP1 = v3.x - v1.x
 	move	r28,TEMP2
 	sub	r26,TEMP2	; TEMP2 = v3.y - v1.y
-	GPU_JSR FIXED_DIV	; TEMP1 = TEMP1/TEMP2
+	GPU_JSR FIXED_DIV	; (v3.x - v2.x) / (v3.x - v2.x)
 	movei	#_tri_slope1,TEMP2
 	store	TEMP1,(TEMP2)
-
+	
 	move	r25,TEMP1
 	sub	r24,TEMP1	; TEMP1 = v3.x - v2.x
 	move	r28,TEMP2
 	sub	r27,TEMP2	; TEMP2 = v3.y - v2.y
-	GPU_JSR FIXED_DIV	; TEMP1 = TEMP1/TEMP2
+	GPU_JSR FIXED_DIV	; (v3.x - v1.x) / (v3.x - v1.x)
 	movei	#_tri_slope2,TEMP2
 	store	TEMP1,(TEMP2)
 
@@ -611,8 +449,9 @@ _blit_filled_triangle:
 	moveta	r25,POLYFILL_CUR_X2
 	moveta	r28,POLYFILL_SCANLINE_START
 	moveta	r26,POLYFILL_SCANLINE_END
-
+	
 	GPU_JSR	_do_fill_flattop_polygon
+	GPU_RTS
 
 	.phrase
 _load_vertex_data_for_polyfill:
@@ -634,7 +473,7 @@ _load_vertex_data_for_polyfill:
 	load	(r15+r20),r26	; v1.y
 	load	(r15+r21),r27	; v2.y
 	load	(r15+r22),r28	; v3.y
-
+	
 	GPU_RTS
 
 	.phrase
@@ -663,13 +502,13 @@ _polyfill_blit_registers_setup:
 	movei	#A1_CLIP,TEMP2
 	store	TEMP1,(TEMP2)
 
-	movei	#0,TEMP1
+	moveq	#0,TEMP1
 	movei	#PITCH1|PIXEL8|WID320|XADDPIX,TEMP2
 	
 	store	TEMP1,(B_A1_FPIXEL)
 	store	TEMP2,(B_A1_FLAGS)
 
-	movei	#$00000000,TEMP1
+	moveq	#$00000000,TEMP1
 	store	TEMP1,(B_A1_STEP)
 
 	GPU_RTS
@@ -688,6 +527,12 @@ _do_fill_flattop_polygon:
 	;;   POLYFILL_CUR_X2 -= tri_slope2
 	;; }
 
+*	POLYFILL_CUR_X1		.equr	r2
+*	POLYFILL_CUR_X2		.equr	r3
+*	POLYFILL_SCANLINE_START	.equr	r4
+*	POLYFILL_SCANLINE_END	.equr	r5
+*	POLYFILL_SCANLINE_CUR	.equr	r6
+	
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
@@ -708,7 +553,20 @@ _do_fill_flattop_polygon:
 	move	POLYFILL_CUR_X2,r16
 	shrq	#16,r15
 	shrq	#16,r16
-	
+	cmp	r15,r16
+	jr	ne,.notsame
+	nop
+	addq	#1,r16
+
+.notsame:
+	cmp	r15,r16
+	jr	hi,.go
+
+	move	r15,TEMP1
+	move	r16,r15
+	move	TEMP1,r16
+
+.go:
 	;; Store the pixel pointer for the starting position.
 	move	POLYFILL_SCANLINE_CUR,r10
 	or	r15,r10
@@ -720,7 +578,7 @@ _do_fill_flattop_polygon:
 	bset	#16,TEMP1
 	store	TEMP1,(B_B_COUNT)
 	move	TEMP1,r12
-
+	
 	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
 
@@ -729,12 +587,98 @@ _do_fill_flattop_polygon:
 
 	sub	r18,POLYFILL_CUR_X1
 	sub	r19,POLYFILL_CUR_X2
-
-	cmp	POLYFILL_SCANLINE_END,POLYFILL_SCANLINE_CUR
-	jump	pl,(r7)
+	
+	cmp	POLYFILL_SCANLINE_CUR,POLYFILL_SCANLINE_END
+	jump	ge,(r7)
 	nop
 
-.polyfill_complete:	
+.polyfill_complete:
+	GPU_REG_BANK_0
+	GPU_RTS
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;
+	
+	.phrase
+_do_fill_flatbottom_polygon:
+	GPU_REG_BANK_1
+
+	;; http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+	
+	;; for (int scanlineY = v3.y; scanlineY > v1.y; scanlineY--)
+	;; {
+	;;   drawLine(POLYFILL_CUR_X1, scanlineY, POLYFILL_CUR_X2, scanlineY)
+	;;   POLYFILL_CUR_X1 -= tri_slope1
+	;;   POLYFILL_CUR_X2 -= tri_slope2
+	;; }
+
+*	POLYFILL_CUR_X1		.equr	r2
+*	POLYFILL_CUR_X2		.equr	r3
+*	POLYFILL_SCANLINE_START	.equr	r4
+*	POLYFILL_SCANLINE_END	.equr	r5
+*	POLYFILL_SCANLINE_CUR	.equr	r6
+	
+	movei	#$FFFF0000,r10
+	and	r10,POLYFILL_SCANLINE_START
+	and	r10,POLYFILL_SCANLINE_END
+
+	movei	#_tri_slope1,TEMP1
+	movei	#_tri_slope2,TEMP2
+	load	(TEMP1),r18
+	load	(TEMP2),r19
+
+	movei	#.polyfill_loop,r7
+	move	POLYFILL_SCANLINE_START,POLYFILL_SCANLINE_CUR
+
+	;; Set up some blitter registers...
+	GPU_JSR	_polyfill_blit_registers_setup
+	
+.polyfill_loop:
+	move	POLYFILL_CUR_X1,r15
+	move	POLYFILL_CUR_X2,r16
+	shrq	#16,r15
+	shrq	#16,r16
+	cmp	r15,r16
+	jr	ne,.notsame
+	nop
+	addq	#1,r16
+	
+.notsame:
+	cmp	r15,r16
+	jr	hi,.go
+
+	move	r16,TEMP1
+	move	r15,r16
+	move	TEMP1,r15
+	
+.go:
+	;; Store the pixel pointer for the starting position.
+	move	POLYFILL_SCANLINE_CUR,r10
+	or	r15,r10
+	store	r10,(B_A1_PIXEL)
+
+	;; Draw a horizontal line from POLYFILL_CUR_X1 to POLYFILL_CUR_X2 on scanline POLYFILL_SCANLINE_CUR.
+	move 	r16,TEMP1
+	sub	r15,TEMP1
+	bset	#16,TEMP1
+	bset	#0,TEMP1
+	store	TEMP1,(B_B_COUNT)
+	move	TEMP1,r12
+	
+	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
+	store	TEMP1,(B_B_CMD)
+
+	movei	#$00010000,r11
+	add	r11,POLYFILL_SCANLINE_CUR
+
+	add	r18,POLYFILL_CUR_X1
+	add	r19,POLYFILL_CUR_X2
+	
+	;; if POLYFILL_SCANLINE_CUR <= POLYFILL_SCANLINE_END, jump back to polyfill_loop
+	cmp	POLYFILL_SCANLINE_END,POLYFILL_SCANLINE_CUR
+	jump	ne,(r7)
+	nop
+
+.polyfill_complete:
 	GPU_REG_BANK_0
 	GPU_RTS
 
@@ -1094,7 +1038,6 @@ _gpu_project_and_draw_triangle::
 	store	TEMP1,(TEMP2)
 
 	;; And blit.
-*	GPU_JSR	#_blit_wireframe_triangle
 	GPU_JSR #_blit_filled_triangle
 
 .advance_triangle:

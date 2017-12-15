@@ -16,8 +16,8 @@ void GPU_MMULT_START();
 
 extern char skunkoutput[128];
 
-extern uint8_t blit_triangle[];
-extern uint8_t blit_triangle_end[];
+extern uint8_t blit_wireframe_triangle[];
+extern uint8_t blit_wireframe_triangle_end[];
 
 extern uint8_t blit_triangle_program_start[];
 

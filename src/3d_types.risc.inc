@@ -9,15 +9,15 @@ SHAPE_SIZE			.equ	40
 
 ;;; C: struct vector3fx_t
 VECTOR3FX_START		.equ	0
-VECTOR3FX_X			.equ	4
-VECTOR3FX_Y			.equ	8
-VECTOR3FX_Z			.equ	12
-VECTOR3FX_SIZE		.equ	16
+VECTOR3FX_X			.equ	0
+VECTOR3FX_Y			.equ	4
+VECTOR3FX_Z			.equ	8
+VECTOR3FX_SIZE		.equ	12
 
 ;;; C: struct vector4fx_t
 VECTOR4FX_START		.equ	0
-VECTOR4FX_X			.equ	4
-VECTOR4FX_Y			.equ	8
-VECTOR4FX_Z			.equ	12
-VECTOR4FX_W			.equ	16
-VECTOR4FX_SIZE		.equ	20
+VECTOR4FX_X			.equ	0
+VECTOR4FX_Y			.equ	4
+VECTOR4FX_Z			.equ	8
+VECTOR4FX_W			.equ	12
+VECTOR4FX_SIZE		.equ	16

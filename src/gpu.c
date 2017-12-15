@@ -17,7 +17,7 @@ void GPU_LOAD_MMULT_PROGRAM() {
 }
 
 void GPU_START(uint8_t *function) {
-	MMIO32(G_PC) = (uint32_t)(0xF03000 + function - blit_triangle);  
+	MMIO32(G_PC) = (uint32_t)(0xF03000 + function - blit_wireframe_triangle);  
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
 }
 
@@ -32,7 +32,7 @@ void GPU_BUILD_TRANSFORMATION_START() {
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
 }
 
-#define PROJECT_AND_DRAW_TRIANGLE (0xF03000 + gpu_project_and_draw_triangle - blit_triangle)
+#define PROJECT_AND_DRAW_TRIANGLE (0xF03000 + gpu_project_and_draw_triangle - blit_wireframe_triangle)
 void GPU_PROJECT_AND_DRAW_TRIANGLE() {
 	MMIO32(G_PC) = (uint32_t)(PROJECT_AND_DRAW_TRIANGLE);
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
@@ -50,5 +50,5 @@ void gpu_blit_triangle(Vector3FX *vertexes, uint32_t color)
 	ptr_vertex_array = vertexes;
 	line_clut_color = color;
 
-	GPU_START(blit_triangle);
+	GPU_START(blit_wireframe_triangle);
 }
