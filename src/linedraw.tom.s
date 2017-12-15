@@ -11,6 +11,7 @@
 	ge	equ	8
 
 	.include "jaguar.inc"
+	.include "3d_types.risc.inc"
 	.globl	_back_buffer
 	.globl	_scanline_offset_table
 	.globl  _VIEW_EYE
@@ -68,7 +69,7 @@ _blit_triangle_program_start::
 	.gpu
 	.org $F03000
 
-_blit_triangle::
+_blit_wireframe_triangle::
 	GPU_REG_BANK_1
 	movei	#stack_bank_1_end,SP
 	
@@ -85,9 +86,6 @@ setup_blit:
 	movei	#B_PATD,B_B_PATD
 	movei	#B_COUNT,B_B_COUNT
 	movei	#B_CMD,B_B_CMD
-
-	;; TODO: Implement a triangle queue. Dequeue a triangle, call do_blit_triangle.
-	;; If the queue is empty, spin loop until there are more triangles to process.
 	
 	GPU_REG_BANK_1
 
@@ -96,66 +94,66 @@ do_blit_triangle:
 	;; The points will be (p0.x,p0.y),(p1.x,p1.y), (p1.x,p1.y),(p2.x,p2.y), (p2.x,p2.y),(p0.x,p0.y)
 	;; TODO: colors besides white
 
-	movei	#_ptr_vertex_array,PTR_VERTEXES
- 	load	(PTR_VERTEXES),PTR_VERTEXES
+*	movei	#_ptr_vertex_array,PTR_VERTEXES
+* 	load	(PTR_VERTEXES),PTR_VERTEXES
 	
 .draw_line_1:
-	movei	#0,r14
-	movei	#16,r15
-	load	(r14+PTR_VERTEXES),LINE_X1
-	load	(r15+PTR_VERTEXES),LINE_X2
-	movei	#4,r14
-	movei	#20,r15
-	load	(r14+PTR_VERTEXES),LINE_Y1
-	load	(r15+PTR_VERTEXES),LINE_Y2
+*	movei	#0,r14
+*	movei	#16,r15
+*	load	(r14+PTR_VERTEXES),LINE_X1
+*	load	(r15+PTR_VERTEXES),LINE_X2
+*	movei	#4,r14
+*	movei	#20,r15
+*	load	(r14+PTR_VERTEXES),LINE_Y1
+*	load	(r15+PTR_VERTEXES),LINE_Y2
 
-	moveta	LINE_X1,LINE_X1
-	moveta	LINE_X2,LINE_X2
-	moveta	LINE_Y1,LINE_Y1
-	moveta	LINE_Y2,LINE_Y2
+*	moveta	LINE_X1,LINE_X1
+*	moveta	LINE_X2,LINE_X2
+*	moveta	LINE_Y1,LINE_Y1
+*	moveta	LINE_Y2,LINE_Y2
 
-	GPU_JSR	#do_blit_line
+*	GPU_JSR	#do_blit_line
 
 .draw_line_2:
-	movei	#_ptr_vertex_array,PTR_VERTEXES
- 	load	(PTR_VERTEXES),PTR_VERTEXES
+*	movei	#_ptr_vertex_array,PTR_VERTEXES
+* 	load	(PTR_VERTEXES),PTR_VERTEXES
 	
-	movei	#16,r14
-	movei	#32,r15
-	load	(r14+PTR_VERTEXES),LINE_X1
-	load	(r15+PTR_VERTEXES),LINE_X2
-	movei	#20,r14
-	movei	#36,r15
-	load	(r14+PTR_VERTEXES),LINE_Y1
-	load	(r15+PTR_VERTEXES),LINE_Y2
+*	movei	#16,r14
+*	movei	#32,r15
+*	load	(r14+PTR_VERTEXES),LINE_X1
+*	load	(r15+PTR_VERTEXES),LINE_X2
+*	movei	#20,r14
+*	movei	#36,r15
+*	load	(r14+PTR_VERTEXES),LINE_Y1
+*	load	(r15+PTR_VERTEXES),LINE_Y2
+*
+*	moveta	LINE_X1,LINE_X1
+*	moveta	LINE_X2,LINE_X2
+*	moveta	LINE_Y1,LINE_Y1
+*	moveta	LINE_Y2,LINE_Y2
 
-	moveta	LINE_X1,LINE_X1
-	moveta	LINE_X2,LINE_X2
-	moveta	LINE_Y1,LINE_Y1
-	moveta	LINE_Y2,LINE_Y2
-
-	GPU_JSR	#do_blit_line
+*	GPU_JSR	#do_blit_line
 
 .draw_line_3:
-	movei	#_ptr_vertex_array,PTR_VERTEXES
- 	load	(PTR_VERTEXES),PTR_VERTEXES
+*	movei	#_ptr_vertex_array,PTR_VERTEXES
+* 	load	(PTR_VERTEXES),PTR_VERTEXES
 	
-	movei	#32,r14
-	movei	#0,r15
-	load	(r14+PTR_VERTEXES),LINE_X1
-	load	(r15+PTR_VERTEXES),LINE_X2
-	movei	#36,r14
-	movei	#4,r15
-	load	(r14+PTR_VERTEXES),LINE_Y1
-	load	(r15+PTR_VERTEXES),LINE_Y2
+*	movei	#32,r14
+*	movei	#0,r15
+*	load	(r14+PTR_VERTEXES),LINE_X1
+*	load	(r15+PTR_VERTEXES),LINE_X2
+*	movei	#36,r14
+*	movei	#4,r15
+*	load	(r14+PTR_VERTEXES),LINE_Y1
+*	load	(r15+PTR_VERTEXES),LINE_Y2
 
-	moveta	LINE_X1,LINE_X1
-	moveta	LINE_X2,LINE_X2
-	moveta	LINE_Y1,LINE_Y1
-	moveta	LINE_Y2,LINE_Y2
+*	moveta	LINE_X1,LINE_X1
+*	moveta	LINE_X2,LINE_X2
+*	moveta	LINE_Y1,LINE_Y1
+*	moveta	LINE_Y2,LINE_Y2
 
-	GPU_JSR	#do_blit_line
-
+*	GPU_JSR	#do_blit_line
+	
 	GPU_REG_BANK_0
 	GPU_RTS
 
@@ -448,8 +446,297 @@ blit_line_done:
 	.phrase
 _ptr_vertex_array::		dcb.l	1,0
 _ptr_current_triangle:		dcb.l	1,0
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	.include "fixed.risc.inc"
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
-_gpu_register_dump::		dcb.l	32,0
+_tri_slope1:			dcb.l	1,0
+_tri_slope2:			dcb.l  	1,0
+	
+	.phrase
+_blit_filled_triangle:
+	POLY_PTR_VERTICES	.equr	r10
+	POLYFILL_CUR_X1		.equr	r2
+	POLYFILL_CUR_X2		.equr	r3
+	POLYFILL_SCANLINE_START	.equr	r4
+	POLYFILL_SCANLINE_END	.equr	r5
+	POLYFILL_SCANLINE_CUR	.equr	r6
+
+	;; Sort the vertex array in ascending Y coordinate, ascending X coordinate order.
+	movei	#_ptr_vertex_array,TEMP1
+ 	load	(TEMP1),POLY_PTR_VERTICES
+
+	moveq	#VECTOR4FX_X,r14
+	moveq	#VECTOR4FX_Y,r15
+
+	;; Get the beginning of each Vector4FX vertex.
+	move	POLY_PTR_VERTICES,r20
+	addq	#16,r10
+	move	POLY_PTR_VERTICES,r21
+	addq	#16,r10
+	move	POLY_PTR_VERTICES,r22
+
+	load	(r15+r20),r23	; get Y coordinates
+	load	(r15+r21),r24
+	load	(r15+r22),r25
+	load	(r14+r20),r26	; get X coordinates
+	load	(r14+r21),r27
+	load	(r14+r22),r28
+
+	;; TODO: Make these functions instead to save space.
+.swap1:
+	movei	#.swap2,r30
+	movei	#.swap1_do,r29
+
+	cmp	r23,r24
+	jump	pl,(r30) 	; if y2 >= y1, skip
+	nop	
+	jump	ne,(r30)	; && y1 != y2, skip
+	nop
+	cmp	r26,r27
+	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap. is this correct?
+	nop
+	
+	;; y2 > y1 or x2 > x1. Swap v1 and v2.
+.swap1_do:
+	movei	#4,r4
+	movei	#.swap1_loop,r29
+.swap1_loop:
+	load	(r20),r2
+	load	(r21),r3
+	store	r2,(r21)
+	store	r3,(r20)
+	subq	#1,r4
+	addq	#4,r20
+	addq	#4,r21
+	cmpq	#0,r4
+	jump	ne,(r29)	; swap 16 bytes
+	nop
+.swap1_done:
+	subq	#16,r20
+	subq	#16,r21
+
+.swap2:
+	movei	#.swap3,r30
+	movei	#.swap2_do,r29
+
+	cmp	r24,r25
+	jump	pl,(r30) 	; if y2 > y3, swap
+	nop	
+	jump	ne,(r30)	; if y2 != y3, swap
+	nop
+	cmp	r27,r28
+	jump	lo,(r30)	; if y2 == y3 && x2 > x3, swap. is this correct?
+	nop
+	
+	;; y3 > y2 or x3 > x2. Swap v3 and v2.
+.swap2_do:
+	movei	#4,r4
+	movei	#.swap2_loop,r29
+.swap2_loop:
+	load	(r21),r2
+	load	(r22),r3
+	store	r2,(r22)
+	store	r3,(r21)
+	subq	#1,r4
+	addq	#4,r21
+	addq	#4,r22
+	cmpq	#0,r4
+	jump	ne,(r29)	; swap 16 bytes
+	nop
+.swap2_done:
+	subq	#16,r21
+	subq	#16,r22
+
+.swap3:
+	movei	#.swaps_done,r30
+	movei	#.swap3_do,r29
+
+	cmp	r23,r24
+	jump	pl,(r30) 	; if y1 > y2, swap
+	nop	
+	jump	ne,(r30)	; if y1 != y2, swap
+	nop
+	cmp	r26,r27
+	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap. is this correct?
+	nop
+	
+	;; y2 > y1 or x2 > x1. Swap v1 and v2.
+.swap3_do:
+	movei	#4,r4
+	movei	#.swap3_loop,r29
+.swap3_loop:
+	load	(r20),r2
+	load	(r21),r3
+	store	r2,(r21)
+	store	r3,(r20)
+	subq	#1,r4
+	addq	#4,r20
+	addq	#4,r21
+	cmpq	#0,r4
+	jump	ne,(r29)	; swap 16 bytes
+	nop
+.swap3_done:
+	subq	#16,r20
+	subq	#16,r21
+
+.swaps_done:
+
+	;; OK, now ptr_vertex_array is in the correct order.
+.flat_top_triangle:
+	
+.calculate_slopes:
+	GPU_JSR	_load_vertex_data_for_polyfill
+
+	move	r25,TEMP1
+	sub	r23,TEMP1	; TEMP1 = v3.x - v1.x
+	move	r28,TEMP2
+	sub	r26,TEMP2	; TEMP2 = v3.y - v1.y
+	GPU_JSR FIXED_DIV	; TEMP1 = TEMP1/TEMP2
+	movei	#_tri_slope1,TEMP2
+	store	TEMP1,(TEMP2)
+
+	move	r25,TEMP1
+	sub	r24,TEMP1	; TEMP1 = v3.x - v2.x
+	move	r28,TEMP2
+	sub	r27,TEMP2	; TEMP2 = v3.y - v2.y
+	GPU_JSR FIXED_DIV	; TEMP1 = TEMP1/TEMP2
+	movei	#_tri_slope2,TEMP2
+	store	TEMP1,(TEMP2)
+
+	moveta	r25,POLYFILL_CUR_X1
+	moveta	r25,POLYFILL_CUR_X2
+	moveta	r28,POLYFILL_SCANLINE_START
+	moveta	r26,POLYFILL_SCANLINE_END
+
+	GPU_JSR	_do_fill_flattop_polygon
+
+	.phrase
+_load_vertex_data_for_polyfill:
+	movei	#_ptr_vertex_array,TEMP1
+ 	load	(TEMP1),POLY_PTR_VERTICES
+	
+	moveq	#VECTOR4FX_X,r14
+	moveq	#VECTOR4FX_Y,r15
+	
+	move	POLY_PTR_VERTICES,r20
+	addq	#16,r10
+	move	POLY_PTR_VERTICES,r21
+	addq	#16,r10
+	move	POLY_PTR_VERTICES,r22
+
+	load	(r14+r20),r23	; v1.x
+	load	(r14+r21),r24	; v2.x
+	load	(r14+r22),r25	; v3.x
+	load	(r15+r20),r26	; v1.y
+	load	(r15+r21),r27	; v2.y
+	load	(r15+r22),r28	; v3.y
+
+	GPU_RTS
+
+	.phrase
+_polyfill_blit_registers_setup:	
+	;; Set up some blitter registers...
+	movei	#A1_BASE,B_A1_BASE
+	movei	#A1_PIXEL,B_A1_PIXEL
+	movei	#A1_FPIXEL,B_A1_FPIXEL
+	movei	#A1_INC,B_A1_INC
+	movei	#A1_FINC,B_A1_FINC
+	movei	#A1_FLAGS,B_A1_FLAGS
+	movei	#A1_STEP,B_A1_STEP
+	movei	#B_PATD,B_B_PATD
+	movei	#B_COUNT,B_B_COUNT
+	movei	#B_CMD,B_B_CMD
+
+	movei	#_back_buffer,TEMP1
+	load	(TEMP1),TEMP1
+	store	TEMP1,(B_A1_BASE)
+
+	movei	#_line_clut_color,TEMP2
+	load	(TEMP2),TEMP1
+	store	TEMP1,(B_B_PATD)
+
+	movei	#$00C80140,TEMP1 ; 320x200 window
+	movei	#A1_CLIP,TEMP2
+	store	TEMP1,(TEMP2)
+
+	movei	#0,TEMP1
+	movei	#PITCH1|PIXEL8|WID320|XADDPIX,TEMP2
+	
+	store	TEMP1,(B_A1_FPIXEL)
+	store	TEMP2,(B_A1_FLAGS)
+
+	movei	#$00000000,TEMP1
+	store	TEMP1,(B_A1_STEP)
+
+	GPU_RTS
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	.phrase
+_do_fill_flattop_polygon:
+	GPU_REG_BANK_1
+
+	;; http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
+	
+	;; for (int scanlineY = v3.y; scanlineY > v1.y; scanlineY--)
+	;; {
+	;;   drawLine(POLYFILL_CUR_X1, scanlineY, POLYFILL_CUR_X2, scanlineY)
+	;;   POLYFILL_CUR_X1 -= tri_slope1
+	;;   POLYFILL_CUR_X2 -= tri_slope2
+	;; }
+
+	movei	#$FFFF0000,r10
+	and	r10,POLYFILL_SCANLINE_START
+	and	r10,POLYFILL_SCANLINE_END
+
+	movei	#_tri_slope1,TEMP1
+	movei	#_tri_slope2,TEMP2
+	load	(TEMP1),r18
+	load	(TEMP2),r19
+
+	movei	#.polyfill_loop,r7
+	move	POLYFILL_SCANLINE_START,POLYFILL_SCANLINE_CUR
+
+	;; Set up some blitter registers...
+	GPU_JSR	_polyfill_blit_registers_setup
+	
+.polyfill_loop:
+	move	POLYFILL_CUR_X1,r15
+	move	POLYFILL_CUR_X2,r16
+	shrq	#16,r15
+	shrq	#16,r16
+	
+	;; Store the pixel pointer for the starting position.
+	move	POLYFILL_SCANLINE_CUR,r10
+	or	r15,r10
+	store	r10,(B_A1_PIXEL)
+
+	;; Draw a horizontal line from POLYFILL_CUR_X1 to POLYFILL_CUR_X2 on scanline POLYFILL_SCANLINE_CUR.
+	move 	r16,TEMP1
+	sub	r15,TEMP1
+	bset	#16,TEMP1
+	store	TEMP1,(B_B_COUNT)
+	move	TEMP1,r12
+
+	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
+	store	TEMP1,(B_B_CMD)
+
+	movei	#$00010000,r11
+	sub	r11,POLYFILL_SCANLINE_CUR
+
+	sub	r18,POLYFILL_CUR_X1
+	sub	r19,POLYFILL_CUR_X2
+
+	cmp	POLYFILL_SCANLINE_END,POLYFILL_SCANLINE_CUR
+	jump	pl,(r7)
+	nop
+
+.polyfill_complete:	
+	GPU_REG_BANK_0
+	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Draw triangle on the screen routine
@@ -807,7 +1094,8 @@ _gpu_project_and_draw_triangle::
 	store	TEMP1,(TEMP2)
 
 	;; And blit.
-	GPU_JSR	#_blit_triangle
+*	GPU_JSR	#_blit_wireframe_triangle
+	GPU_JSR #_blit_filled_triangle
 
 .advance_triangle:
 	movei	#_object_Triangle,r3
@@ -879,9 +1167,9 @@ _gpu_matrix_vector_product:
 	movei	#_gpu_mvp_matrix_ptr,MV_MATRIX
 	movei	#_gpu_mvp_vector_ptr,MV_VECTOR
 
-	move	MV_MATRIX,r5
-	move	MV_VECTOR,r6
-	move	MV_RESULT,r7
+*	move	MV_MATRIX,r5
+*	move	MV_VECTOR,r6
+*	move	MV_RESULT,r7
 
 	load	(MV_RESULT),MV_RESULT
 	load	(MV_MATRIX),MV_MATRIX
@@ -903,8 +1191,6 @@ _gpu_matrix_vector_product:
 	load	(MV_VECTOR),r18	
 	GPU_JSR	FIXED_PRODUCT	; matrix->data[0][0] * vector->x
 	move	r5,MV_ACCUMULATOR
-
-	or	r5,r5
 	
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
@@ -913,8 +1199,6 @@ _gpu_matrix_vector_product:
 	GPU_JSR FIXED_PRODUCT	; matrix->data[0][1] * vector->y
 	add	r5,MV_ACCUMULATOR
 
-	or	r5,r5
-
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
 	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
@@ -922,14 +1206,10 @@ _gpu_matrix_vector_product:
 	GPU_JSR FIXED_PRODUCT	; matrix->data[0][2] * vector->z
 	add	r5,MV_ACCUMULATOR
 
-	or	r5,r5
-
 	addq	#4,MV_MATRIX_OFFSET
 	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
 	add	r17,MV_ACCUMULATOR ; matrix->data[0][3] * 1
 	store	MV_ACCUMULATOR,(MV_RESULT)
-
-	move	r5,r5
 
 	move	MV_ACCUMULATOR,r20
 
@@ -944,11 +1224,7 @@ _gpu_matrix_vector_product:
 	
 	GPU_REG_BANK_0
 	nop
-	nop
-	nop
 	GPU_RTS
-
-	.include "fixed.risc.inc"
 	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
@@ -1046,11 +1322,11 @@ FIXED_PRODUCT_BANK_1:
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	.phrase
-stack_bank_0:	dcb.l	32,0
+stack_bank_0:	dcb.l	8,0
 stack_bank_0_end:
 
 	.phrase
-stack_bank_1:	dcb.l	32,0
+stack_bank_1:	dcb.l	8,0
 stack_bank_1_end:
 
 	
