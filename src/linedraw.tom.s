@@ -477,7 +477,7 @@ _load_vertex_data_for_polyfill:
 	GPU_RTS
 
 	.phrase
-_polyfill_blit_registers_setup:	
+_polyfill_blit_registers_setup:
 	;; Set up some blitter registers...
 	movei	#A1_BASE,B_A1_BASE
 	movei	#A1_PIXEL,B_A1_PIXEL
@@ -494,10 +494,17 @@ _polyfill_blit_registers_setup:
 	load	(TEMP1),TEMP1
 	store	TEMP1,(B_A1_BASE)
 
-	movei	#_line_clut_color,TEMP2
-	load	(TEMP2),TEMP1
-	store	TEMP1,(B_B_PATD)
+	PushReg	r17
 
+	movei	#_gpu_tri_facing_ratio,TEMP1
+	load	(TEMP1),r17
+	shrq	#12,r17		; shift out all but the high nybble of the ratio.
+	sat8	r17
+	
+	store	r17,(B_B_PATD)
+
+	PopReg	r17
+	
 	movei	#$00C80140,TEMP1 ; 320x200 window
 	movei	#A1_CLIP,TEMP2
 	store	TEMP1,(TEMP2)
@@ -532,7 +539,10 @@ _do_fill_flattop_polygon:
 *	POLYFILL_SCANLINE_START	.equr	r4
 *	POLYFILL_SCANLINE_END	.equr	r5
 *	POLYFILL_SCANLINE_CUR	.equr	r6
-	
+
+	;; Set up some blitter registers...
+	GPU_JSR	_polyfill_blit_registers_setup
+
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
@@ -544,9 +554,6 @@ _do_fill_flattop_polygon:
 
 	movei	#.polyfill_loop,r7
 	move	POLYFILL_SCANLINE_START,POLYFILL_SCANLINE_CUR
-
-	;; Set up some blitter registers...
-	GPU_JSR	_polyfill_blit_registers_setup
 	
 .polyfill_loop:
 	move	POLYFILL_CUR_X1,r15
@@ -562,9 +569,9 @@ _do_fill_flattop_polygon:
 	cmp	r15,r16
 	jr	hi,.go
 
-	move	r15,TEMP1
-	move	r16,r15
-	move	TEMP1,r16
+	move	r16,TEMP1
+	move	r15,r16
+	move	TEMP1,r15
 
 .go:
 	;; Store the pixel pointer for the starting position.
@@ -616,7 +623,10 @@ _do_fill_flatbottom_polygon:
 *	POLYFILL_SCANLINE_START	.equr	r4
 *	POLYFILL_SCANLINE_END	.equr	r5
 *	POLYFILL_SCANLINE_CUR	.equr	r6
-	
+
+	;; Set up some blitter registers...
+	GPU_JSR	_polyfill_blit_registers_setup
+
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
@@ -628,9 +638,6 @@ _do_fill_flatbottom_polygon:
 
 	movei	#.polyfill_loop,r7
 	move	POLYFILL_SCANLINE_START,POLYFILL_SCANLINE_CUR
-
-	;; Set up some blitter registers...
-	GPU_JSR	_polyfill_blit_registers_setup
 	
 .polyfill_loop:
 	move	POLYFILL_CUR_X1,r15
@@ -675,11 +682,63 @@ _do_fill_flatbottom_polygon:
 	
 	;; if POLYFILL_SCANLINE_CUR <= POLYFILL_SCANLINE_END, jump back to polyfill_loop
 	cmp	POLYFILL_SCANLINE_END,POLYFILL_SCANLINE_CUR
-	jump	ne,(r7)
+	jump	ge,(r7)
 	nop
 
 .polyfill_complete:
 	GPU_REG_BANK_0
+	GPU_RTS
+
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+FIXED_NORMALIZE:	
+	;; Normalize the vector at r2-r4 in place.
+	
+	;; Store the products in the other register bank at r10-r12.
+	move	r2,r17
+	move	r2,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	moveta	r5,r10		; pass to bank 1
+
+	move	r3,r17
+	move	r3,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	moveta	r5,r11		; pass to bank 1
+
+	move	r4,r17
+	move	r4,r18
+	GPU_JSR	FIXED_PRODUCT_BANK_1
+	moveta	r5,r12		; pass to bank 1
+
+	;; Do FIXED_SQRT in reg bank 1.
+	GPU_REG_BANK_1
+	nop
+
+	move	r10,r0
+	add	r11,r0
+	add	r12,r0
+
+	GPU_JSR	FIXED_SQRT	; r0 = sqrt(r0)
+	moveta	r0,r10		; store the magnitude in bank 0 r10
+
+	;; divide vector by magnitude
+	movefa	r2,r0
+	movefa	r10,r1
+	GPU_JSR	FIXED_DIV
+	moveta	r0,r2		; x
+
+	movefa	r3,r0
+	movefa	r10,r1
+	GPU_JSR	FIXED_DIV
+	moveta	r0,r3		; y
+
+	movefa	r4,r0
+	movefa	r10,r1
+	GPU_JSR	FIXED_DIV
+	moveta	r0,r4		; z
+
+	GPU_REG_BANK_0
+	nop
+
 	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -694,6 +753,9 @@ _gpu_mvp_matrix:	dcb.l	16,0
 _gpu_tri_point_1:	dcb.l	4,0
 _gpu_tri_point_2:	dcb.l	4,0
 _gpu_tri_point_3:	dcb.l	4,0
+_gpu_tri_facing_ratio:	dcb.l	1,0
+
+_gpu_tri_normal:	dcb.l	3,0
 	
 	.globl	_object_M
 	.globl	_object_Triangle
@@ -911,59 +973,14 @@ _gpu_project_and_draw_triangle::
 	move	VECTOR_V_Z,r22
 
 .normalize:
-	;; Normalize the vector at r2-r4.
-	;; Store it in the other register bank at r10-r12.
-	move	r2,r17
-	move	r2,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	moveta	r5,r10		; pass to bank 1
+	GPU_JSR	FIXED_NORMALIZE
+	movei	#_gpu_tri_normal,TEMP2
+	store	r2,(TEMP2)
+	addq	#4,TEMP2
+	store	r4,(TEMP2)
+	addq	#4,TEMP2
+	store	r4,(TEMP2)
 
-	move	r3,r17
-	move	r3,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	moveta	r5,r11		; pass to bank 1
-
-	move	r4,r17
-	move	r4,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	moveta	r5,r12		; pass to bank 1
-
-	;; Do FIXED_SQRT in reg bank 1.
-	GPU_REG_BANK_1
-	nop
-
-	move	r10,r0
-	add	r11,r0
-	add	r12,r0
-
-	GPU_JSR	FIXED_SQRT	; r0 = sqrt(r0)
-	moveta	r0,r10		; store the magnitude in bank 0 r10
-
-	;; divide vector by magnitude
-	movefa	r2,r0
-	movefa	r10,r1
-	GPU_JSR	FIXED_DIV
-	moveta	r0,r2		; x
-
-	movefa	r3,r0
-	movefa	r10,r1
-	GPU_JSR	FIXED_DIV
-	moveta	r0,r3		; y
-
-	movefa	r4,r0
-	movefa	r10,r1
-	GPU_JSR	FIXED_DIV
-	moveta	r0,r4		; z
-
-	GPU_REG_BANK_0
-	nop
-
-	movei	#.advance_triangle,r30
-
-	;; Checked against R. Cross product and normalization are correct.
-	;; But the polygon flickers so the normal or dot product can't be right
-
-	;; Result is (r2,r3,r4).
 	;; Now create a vector from the camera to the triangle's p1.
 	movei	#_gpu_tri_point_1,r10
 	load	(r10),r11
@@ -973,19 +990,32 @@ _gpu_project_and_draw_triangle::
 	load	(r10),r13
 
 	movei	#_VIEW_EYE,r19
-	load	(r19),r20
+	load	(r19),r2
 	addq	#4,r19
-	load	(r19),r21
+	load	(r19),r3
 	addq	#4,r19
-	load	(r19),r22
+	load	(r19),r4
 	
-	sub	r11,r20
-	sub	r12,r21
-	sub	r13,r22
+	sub	r11,r2
+	sub	r12,r3
+	sub	r13,r4
 
+	GPU_JSR	FIXED_NORMALIZE
+
+	movei	#_gpu_tri_normal,TEMP2
+	load	(TEMP2),r20
+	addq	#4,TEMP2
+	load	(TEMP2),r21
+	addq	#4,TEMP2
+	load	(TEMP2),r22
+	
 	;; Calculate the dot product of V and p1 vector
 	FIXED_DOT_PRODUCT	r2,r3,r4, r20,r21,r22, r6
 
+	movei	#_gpu_tri_facing_ratio,TEMP1
+	store	r6,(TEMP1)
+
+	movei	#.advance_triangle,r30
 	btst	#31,r6
 	jump	ne,(r30)	; if surface normal is positive, it's visible
 	nop

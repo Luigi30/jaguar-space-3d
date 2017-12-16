@@ -20,7 +20,7 @@ static Vector3FX triangle11[3]= { VERTEX_CREATE( -1, 1, -1), VERTEX_CREATE(-1, 1
 static Vector3FX triangle12[3]= { VERTEX_CREATE( 1, 1, -1), VERTEX_CREATE(-1, 1, -1), VERTEX_CREATE( 1, 1, 1) };
 
 //This will stop when we hit a NULL.
-//static Vector3FX *cube_triangles[64] = { triangle1, triangle2, triangle3, triangle4, triangle5, triangle6, triangle7, triangle8, triangle9, triangle10, triangle11, triangle12, NULL };
-static Vector3FX *cube_triangles[64] = { triangle3, NULL };
+static Vector3FX *cube_triangles[64] = { triangle1, triangle2, triangle3, triangle4, triangle5, triangle6, triangle7, triangle8, triangle9, triangle10, triangle11, triangle12, NULL };
+//static Vector3FX *cube_triangles[64] = { triangle4, NULL };
 
 #endif
