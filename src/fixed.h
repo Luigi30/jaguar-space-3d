@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "gfx/blit.h"
+
 #include "shared.h"
 
 /*                                                                                                                                          
@@ -43,7 +45,9 @@ FIXED_32 FIXED_MUL(FIXED_32 a, FIXED_32 b);
 FIXED_32 FIXED_DIV(const FIXED_32 a, const FIXED_32 b);
 FIXED_32 FIXED_SQRT(FIXED_32 val);
 
-void FIXED_PRINT(FIXED_32 val);
+void FIXED_PRINTF(FIXED_32 val);
+void FIXED_SPRINTF(char *output, char *str, FIXED_32 val);
+void FIXED_PRINT_TO_BUFFER(void *buffer, uint16_t x, uint16_t y, char *str, FIXED_32 val);
 
 /* Lookup tables */
 

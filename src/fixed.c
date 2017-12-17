@@ -1,5 +1,7 @@
 #include "fixed.h"
 
+char fx_temp_out[32];
+
 FIXED_32 FIXED_ADD(FIXED_32 a, FIXED_32 b) { return a+b; }
 FIXED_32 FIXED_SUB(FIXED_32 a, FIXED_32 b) { return a-b; }
 
@@ -78,10 +80,24 @@ inline FIXED_32 FIXED_ABS(FIXED_32 a)
 	return a & 0x7FFFFFFF;
 }
 
-void FIXED_PRINT(FIXED_32 val)
+#define FX_PRINTF_IDENTIFIER "%5ld.%u"
+#define FX_PRINTF_ARGUMENTS (int32_t)FIXED_INT(val), (uint16_t)((FIXED_FRAC(val) / 65536.0) * 10000)
+void FIXED_PRINTF(FIXED_32 val)
 {
-	printf("%5d.%d", (int32_t)FIXED_INT(val), (uint16_t)((FIXED_FRAC(val) / 65536.0) * 10000));
-	//printf("%08X ", val);
+	printf(FX_PRINTF_IDENTIFIER, FX_PRINTF_ARGUMENTS);
+}
+
+void FIXED_SPRINTF(char *output, char *str, FIXED_32 val)
+{
+	char temp[16];
+	sprintf(temp, FX_PRINTF_IDENTIFIER, FX_PRINTF_ARGUMENTS);
+	sprintf(output, str, temp);
+}
+
+void FIXED_PRINT_TO_BUFFER(void *buffer, uint16_t x, uint16_t y, char *str, FIXED_32 val)
+{
+	FIXED_SPRINTF(fx_temp_out, str, val);
+	BLIT_8x8_text_string(buffer, x, y, fx_temp_out);
 }
 
 #define FRACBITS 16

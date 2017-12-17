@@ -58,6 +58,10 @@ int main() {
   //set correct endianness
   MMIO32(G_END) = 0x00070007;
   
+  tri_ndc_1 = calloc(1, sizeof(Vector4FX));
+  tri_ndc_2 = calloc(1, sizeof(Vector4FX));
+  tri_ndc_3 = calloc(1, sizeof(Vector4FX));
+  
   DSP_LoadSoundEngine();
   DSP_StartSoundEngine();
   //DSP_PlayModule();
@@ -188,9 +192,21 @@ int main() {
 	//Init cube
 	Shape cube;
 	cube.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(0) };
+	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
 	cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
 	cube.triangles = cube_triangles;
+	
+	Shape cube2;
+	cube2.translation = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube2.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube2.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+	cube2.triangles = cube_triangles;
+	
+	Shape cube3;
+	cube3.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube3.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+	cube3.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+	cube3.triangles = cube_triangles;
 
 	//Init transformation matrix
 	m = calloc(1, sizeof(Matrix44));
@@ -214,9 +230,9 @@ int main() {
 	Vector3FX transformedVertexList[4];
 	
 	//Init view parameters
-	VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00040000 };
-	VIEW_CENTER = (Vector3FX){ 0x00000000, 0, 0 };
-	VIEW_UP 	= (Vector3FX){ 0, 0x00010000, 0 };	
+	VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00050000 };
+	VIEW_CENTER = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
+	VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };	
 		
   while(true) {
 	  
@@ -246,9 +262,9 @@ int main() {
 	//skunkCONSOLEWRITE("Building view matrix\n");
 	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
-    cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
-    cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
-    cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+    //cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
+    //cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+    //cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -308,14 +324,19 @@ int main() {
 		//if(~stick0_lastread & STICK_A) printf("A\n");
 	if(~stick0_lastread & STICK_A)
 	{
-	  
+		VIEW_EYE.z -= 0x00010000;
+		VIEW_CENTER.z -= 0x00010000;
 	}
 	break;
 	case STICK_B:
 		//if(~stick0_lastread & STICK_B) printf("B\n");
 	break;
 	case STICK_C:
-		//if(~stick0_lastread & STICK_C) printf("C\n");
+		if(~stick0_lastread & STICK_C)
+		{
+			VIEW_EYE.z += 0x00010000;
+			VIEW_CENTER.z += 0x00010000;
+		}
 	break;
 	}
 	  
@@ -325,10 +346,6 @@ int main() {
 	
 	GPU_BUILD_TRANSFORMATION_START();
 	jag_gpu_wait();
-	
-	//skunkCONSOLEWRITE("Transformation is calculated!\n");
-  
-	//skunkCONSOLEWRITE("Loading LINEDRAW\n");
     GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
 	
 	Vector4FX projectedPoints[3];
@@ -338,15 +355,17 @@ int main() {
 	object_M = m;
 	object_Triangle = &cube.triangles[0];
 	
-	MMIO32(0x50010) = (uint32_t)m;
-	MMIO32(0x50014) = (uint32_t)mModel;
-	MMIO32(0x50018) = (uint32_t)mView;
-	MMIO32(0x5001c) = (uint32_t)mPerspective;
-	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
+	
 	jag_gpu_wait();
 	
-	//while(true) {};
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 8,  "EYE X: %s", VIEW_EYE.x);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 16, "EYE Y: %s", VIEW_EYE.y);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 24, "EYE Z: %s", VIEW_EYE.z);
+	
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1  X: %s", tri_ndc_1->x);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1  Y: %s", tri_ndc_1->y);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1  Z: %s", tri_ndc_1->z);
 	
 	/*
     sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);

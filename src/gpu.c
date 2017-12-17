@@ -1,6 +1,10 @@
 #include "gpu.h"
 #include "jaglib.h"
 
+Vector4FX *tri_ndc_1;
+Vector4FX *tri_ndc_2;
+Vector4FX *tri_ndc_3;
+
 void GPU_LOAD_LINEDRAW_PROGRAM() {
   //skunkCONSOLEWRITE("GPU_LOAD_LINEDRAW_PROGRAM(): beginning upload.\n");
   int bytes = 4096;

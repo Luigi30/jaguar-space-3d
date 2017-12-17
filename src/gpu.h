@@ -63,4 +63,12 @@ void GPU_PROJECT_AND_DRAW_TRIANGLE();
 extern const uint8_t gpu_project_and_draw_triangle[];
 extern const uint8_t gpu_project_and_draw_triangle_end[];
 
+extern Vector4FX gpu_tri_point_1;
+extern Vector4FX gpu_tri_point_2;
+extern Vector4FX gpu_tri_point_3;
+
+extern Vector4FX *tri_ndc_1;
+extern Vector4FX *tri_ndc_2;
+extern Vector4FX *tri_ndc_3;
+
 #endif

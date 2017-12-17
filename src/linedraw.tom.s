@@ -16,6 +16,10 @@
 	.globl	_front_buffer
 	.globl	_scanline_offset_table
 	.globl  _VIEW_EYE
+
+	.globl  _tri_ndc_1
+	.globl  _tri_ndc_2
+	.globl  _tri_ndc_3
 	
 	;all FIXED_32
 	.globl _line_clut_color
@@ -496,8 +500,9 @@ _polyfill_blit_registers_setup:
 
 	PushReg	r17
 
-	movei	#_gpu_tri_facing_ratio,TEMP1
+	movei	#_gpu_tri_facing_ratio,TEMP1	
 	load	(TEMP1),r17
+	
 	shrq	#12,r17		; shift out all but the high nybble of the ratio.
 	sat8	r17
 	
@@ -560,12 +565,19 @@ _do_fill_flattop_polygon:
 	move	POLYFILL_CUR_X2,r16
 	shrq	#16,r15
 	shrq	#16,r16
-	cmp	r15,r16
-	jr	ne,.notsame
-	nop
-	addq	#1,r16
 
-.notsame:
+.clamp_x1:
+	btst	#15,r15
+	jr	eq,.clamp_x2	; check the sign of r15. if negative, clamp to 0
+	nop
+	moveq	#0,r15
+.clamp_x2:
+	btst	#15,r16		; check the sign of r16. if negative, clamp to 0
+	jr	eq,.reorder
+	nop
+	moveq	#0,r16	
+
+.reorder:
 	cmp	r15,r16
 	jr	hi,.go
 
@@ -573,7 +585,7 @@ _do_fill_flattop_polygon:
 	move	r15,r16
 	move	TEMP1,r15
 
-.go:
+.go:	
 	;; Store the pixel pointer for the starting position.
 	move	POLYFILL_SCANLINE_CUR,r10
 	or	r15,r10
@@ -589,12 +601,13 @@ _do_fill_flattop_polygon:
 	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
 
+.next_loop:
 	movei	#$00010000,r11
 	sub	r11,POLYFILL_SCANLINE_CUR
 
 	sub	r18,POLYFILL_CUR_X1
 	sub	r19,POLYFILL_CUR_X2
-	
+
 	cmp	POLYFILL_SCANLINE_CUR,POLYFILL_SCANLINE_END
 	jump	ge,(r7)
 	nop
@@ -644,8 +657,21 @@ _do_fill_flatbottom_polygon:
 	move	POLYFILL_CUR_X2,r16
 	shrq	#16,r15
 	shrq	#16,r16
+
+.clamp_x1:
+	btst	#15,r15
+	jr	eq,.clamp_x2	; check the sign of r15. if negative, clamp to 0
+	nop
+	moveq	#0,r15
+.clamp_x2:
+	btst	#15,r16		; check the sign of r16. if negative, clamp to 0
+	jr	eq,.reorder
+	nop
+	moveq	#0,r16	
+
+.reorder:
 	cmp	r15,r16
-	jr	ne,.notsame
+	jr	ne,.notsame	; make sure x1 != x2
 	nop
 	addq	#1,r16
 	
@@ -673,7 +699,7 @@ _do_fill_flatbottom_polygon:
 	
 	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
-
+	
 	movei	#$00010000,r11
 	add	r11,POLYFILL_SCANLINE_CUR
 
@@ -691,8 +717,7 @@ _do_fill_flatbottom_polygon:
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 FIXED_NORMALIZE:	
-	;; Normalize the vector at r2-r4 in place.
-	
+	;; Normalize the vector at r2-r4 in place.	
 	;; Store the products in the other register bank at r10-r12.
 	move	r2,r17
 	move	r2,r18
@@ -750,9 +775,10 @@ _gpu_mvp_matrix_ptr:	dc.l	0
 _gpu_mvp_matrix:	dcb.l	16,0
 
 	.phrase			; Three Vector4FX for the triangle points.
-_gpu_tri_point_1:	dcb.l	4,0
-_gpu_tri_point_2:	dcb.l	4,0
-_gpu_tri_point_3:	dcb.l	4,0
+_gpu_tri_point_1::	dcb.l	4,0
+_gpu_tri_point_2::	dcb.l	4,0
+_gpu_tri_point_3::	dcb.l	4,0
+	
 _gpu_tri_facing_ratio:	dcb.l	1,0
 
 _gpu_tri_normal:	dcb.l	3,0
@@ -832,7 +858,21 @@ _gpu_project_and_draw_triangle::
 
 .perspective_divide:
 	;; Now we have the NDC coordinates for our three triangles.
-	;; Perform the perspective divide on each triangle.	
+	;; Perform the perspective divide on each triangle.
+	movei	#_gpu_tri_point_1,r10
+	movei	#_tri_ndc_1,r11
+	load	(r10),r12	
+	load	(r11),r13
+	store	r12,(r13)
+	addq	#4,r10
+	addq	#4,r13
+	load	(r10),r12	
+	store	r12,(r13)
+	addq	#4,r10
+	addq	#4,r13
+	load	(r10),r12	
+	store	r12,(r13)
+	
 	movei	#_gpu_tri_point_1,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
@@ -974,10 +1014,11 @@ _gpu_project_and_draw_triangle::
 
 .normalize:
 	GPU_JSR	FIXED_NORMALIZE
+	
 	movei	#_gpu_tri_normal,TEMP2
 	store	r2,(TEMP2)
 	addq	#4,TEMP2
-	store	r4,(TEMP2)
+	store	r3,(TEMP2)
 	addq	#4,TEMP2
 	store	r4,(TEMP2)
 
@@ -1140,17 +1181,9 @@ _gpu_matrix_vector_product:
 	movei	#_gpu_mvp_matrix_ptr,MV_MATRIX
 	movei	#_gpu_mvp_vector_ptr,MV_VECTOR
 
-*	move	MV_MATRIX,r5
-*	move	MV_VECTOR,r6
-*	move	MV_RESULT,r7
-
 	load	(MV_RESULT),MV_RESULT
 	load	(MV_MATRIX),MV_MATRIX
 	load	(MV_VECTOR),MV_VECTOR
-
-	or	MV_RESULT,MV_RESULT
-	or	MV_MATRIX,MV_MATRIX
-	or	MV_VECTOR,MV_VECTOR
 
 	movei	#0,MV_MATRIX_OFFSET
 	movei	#0,MV_RESULT_OFFSET
