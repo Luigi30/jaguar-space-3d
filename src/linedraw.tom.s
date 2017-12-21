@@ -779,7 +779,7 @@ _gpu_tri_point_1::	dcb.l	4,0
 _gpu_tri_point_2::	dcb.l	4,0
 _gpu_tri_point_3::	dcb.l	4,0
 	
-_gpu_tri_facing_ratio:	dcb.l	1,0
+_gpu_tri_facing_ratio::	dcb.l	1,0
 
 _gpu_tri_normal:	dcb.l	3,0
 	
@@ -859,19 +859,6 @@ _gpu_project_and_draw_triangle::
 .perspective_divide:
 	;; Now we have the NDC coordinates for our three triangles.
 	;; Perform the perspective divide on each triangle.
-	movei	#_gpu_tri_point_1,r10
-	movei	#_tri_ndc_1,r11
-	load	(r10),r12	
-	load	(r11),r13
-	store	r12,(r13)
-	addq	#4,r10
-	addq	#4,r13
-	load	(r10),r12	
-	store	r12,(r13)
-	addq	#4,r10
-	addq	#4,r13
-	load	(r10),r12	
-	store	r12,(r13)
 	
 	movei	#_gpu_tri_point_1,TEMP1
 	GPU_JSR	_gpu_perspective_divide
@@ -882,8 +869,6 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
-	;; TODO: Why does this flip signs when incrementing the X rotation?
-	;; That shouldn't affect visibility at all - it's clockwise rotation.
 .determine_triangle_winding:
 	WIND_POINT_1	.equr	r6
 	WIND_POINT_2	.equr	r7
@@ -1049,6 +1034,21 @@ _gpu_project_and_draw_triangle::
 	load	(TEMP2),r21
 	addq	#4,TEMP2
 	load	(TEMP2),r22
+
+	;; store the NDC coordinates of point 1 for debugging
+	movei	#_gpu_tri_point_1,r10
+	movei	#_tri_ndc_1,r11
+	load	(r10),r12	
+	load	(r11),r13
+	store	r12,(r13)
+	addq	#4,r10
+	addq	#4,r13
+	load	(r10),r12	
+	store	r12,(r13)
+	addq	#4,r10
+	addq	#4,r13
+	load	(r10),r12	
+	store	r12,(r13)
 	
 	;; Calculate the dot product of V and p1 vector
 	FIXED_DOT_PRODUCT	r2,r3,r4, r20,r21,r22, r6

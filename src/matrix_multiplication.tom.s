@@ -696,7 +696,7 @@ _gpu_matrix_translation:
 	store	TRANS_FIXED_ONE,(TRANS_PTR_MATRIX) 	;[2][2]
 	addq	#4,TRANS_PTR_MATRIX
 	store	TRANS_Z,(TRANS_PTR_MATRIX)		;[2][3]
-
+	
 	addq	#4,TRANS_PTR_MATRIX
 	store	TRANS_FIXED_ZERO,(TRANS_PTR_MATRIX) 	;[3][0]
 	addq	#4,TRANS_PTR_MATRIX

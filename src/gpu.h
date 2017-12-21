@@ -67,6 +67,8 @@ extern Vector4FX gpu_tri_point_1;
 extern Vector4FX gpu_tri_point_2;
 extern Vector4FX gpu_tri_point_3;
 
+extern uint32_t gpu_tri_facing_ratio;
+
 extern Vector4FX *tri_ndc_1;
 extern Vector4FX *tri_ndc_2;
 extern Vector4FX *tri_ndc_3;

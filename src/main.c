@@ -232,7 +232,9 @@ int main() {
 	//Init view parameters
 	VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00050000 };
 	VIEW_CENTER = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
-	VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };	
+	VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };
+	
+	WriteEmuLog('x');
 		
   while(true) {
 	  
@@ -322,11 +324,11 @@ int main() {
 	break;
 	case STICK_A:
 		//if(~stick0_lastread & STICK_A) printf("A\n");
-	if(~stick0_lastread & STICK_A)
-	{
-		VIEW_EYE.z -= 0x00010000;
-		VIEW_CENTER.z -= 0x00010000;
-	}
+		if(~stick0_lastread & STICK_A)
+		{
+			VIEW_EYE.z -= 0x00010000;
+			VIEW_CENTER.z -= 0x00010000;
+		}
 	break;
 	case STICK_B:
 		//if(~stick0_lastread & STICK_B) printf("B\n");
@@ -350,10 +352,8 @@ int main() {
 	
 	Vector4FX projectedPoints[3];
 	
-	line_clut_color = 255;
-	
 	object_M = m;
-	object_Triangle = &cube.triangles[0];
+	object_Triangle = &cube.triangles[0];	
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	
@@ -363,9 +363,19 @@ int main() {
 	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 16, "EYE Y: %s", VIEW_EYE.y);
 	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 24, "EYE Z: %s", VIEW_EYE.z);
 	
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1  X: %s", tri_ndc_1->x);
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1  Y: %s", tri_ndc_1->y);
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1  Z: %s", tri_ndc_1->z);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1 nX: %s", tri_ndc_1->x);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1 nY: %s", tri_ndc_1->y);
+	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1 nZ: %s", tri_ndc_1->z);
+
+	sprintf(skunkoutput, "v1 nX: %08X", tri_ndc_1->x);
+	BLIT_8x8_text_string(text_buffer, 16, 72, skunkoutput);	
+	sprintf(skunkoutput, "v1 nY: %08X", tri_ndc_1->y);
+	BLIT_8x8_text_string(text_buffer, 16, 80, skunkoutput);	
+	sprintf(skunkoutput, "v1 nZ: %08X", tri_ndc_1->z);
+	BLIT_8x8_text_string(text_buffer, 16, 88, skunkoutput);	
+	
+	sprintf(skunkoutput, "FACING: %08X", gpu_tri_facing_ratio);
+	BLIT_8x8_text_string(text_buffer, 16, 104, skunkoutput);
 	
 	/*
     sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);

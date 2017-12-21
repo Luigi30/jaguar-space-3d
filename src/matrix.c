@@ -166,6 +166,7 @@ void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX
 	Matrix44_Identity(mViewTranslate);
 	mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;
 	Matrix44_Multiply_Matrix44(mView, mViewTranslate, mView);
+	mView->data[3][3] = 0x00010000;	//TODO: fix this? why does this change when X does
 }
 
 void buildPerspectiveMatrix(Matrix44 *mPerspective)
@@ -179,7 +180,7 @@ void buildPerspectiveMatrix(Matrix44 *mPerspective)
 	mPerspective->data[0][0] = 0x0000FB25; // (f / 1.6) = 0.98105
 	mPerspective->data[1][1] = f;
 	mPerspective->data[2][2] = FIXED_DIV(FAR_CLIP, (FAR_CLIP-NEAR_CLIP));
-	mPerspective->data[3][2] = 0x00010000;
 	mPerspective->data[2][3] = -FIXED_DIV(FIXED_MUL(NEAR_CLIP, FAR_CLIP), FAR_CLIP-NEAR_CLIP);
+	mPerspective->data[3][2] = 0x00010000;
 	mPerspective->data[3][3] = 0;
 }

@@ -81,7 +81,8 @@ inline FIXED_32 FIXED_ABS(FIXED_32 a)
 }
 
 #define FX_PRINTF_IDENTIFIER "%5ld.%u"
-#define FX_PRINTF_ARGUMENTS (int32_t)FIXED_INT(val), (uint16_t)((FIXED_FRAC(val) / 65536.0) * 10000)
+//#define FX_PRINTF_ARGUMENTS (int32_t)FIXED_INT(val), (uint16_t)((FIXED_FRAC(val) / 65536.0) * 10000)
+#define FX_PRINTF_ARGUMENTS (int32_t)FIXED_INT(val), (FIXED_INT(val) > 0 ? (uint16_t)((FIXED_FRAC(val) / 65536.0) * 10000) : (uint16_t)((1.0 - (FIXED_FRAC(val) / 65536.0)) * 10000))
 void FIXED_PRINTF(FIXED_32 val)
 {
 	printf(FX_PRINTF_IDENTIFIER, FX_PRINTF_ARGUMENTS);
