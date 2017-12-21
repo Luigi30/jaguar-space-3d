@@ -1,10 +1,10 @@
 BINFILE = space.jag
-
+ 
 ROOT = $(shell cd ..; pwd)
-SRCPATH = .
-BINPATH = ../bin/
+SRCPATH = $(ROOT)/src/
+BINPATH = $(ROOT)/bin/
 OBJPATH = $(ROOT)/obj/
-TOOLPATH= ../tools/
+TOOLPATH= $(ROOT)/tools/
 
 OBJFILES = $(OBJPATH)main.o $(OBJPATH)utils/list.o $(OBJPATH)utils/list_functions.o $(OBJPATH)fixed.o $(OBJPATH)gfx/blit.o $(OBJPATH)mobj.o $(OBJPATH)images.o $(OBJPATH)gfx/palette.o $(OBJPATH)paldata.o $(OBJPATH)dsp.o $(OBJPATH)dsp_68k.o $(OBJPATH)dsp_matrix.o $(OBJPATH)matrix.o $(OBJPATH)linedraw.o $(OBJPATH)gpu.o $(OBJPATH)gpu_68k.o $(OBJPATH)matrix_68k.o $(OBJPATH)matrix_multiplication.o $(OBJPATH)sound_68k.o $(OBJPATH)cube.o
 IMAGES = images/atarifont.s images/atarifont8x8.s
@@ -13,8 +13,8 @@ UNAME := $(shell uname -a)
 ROMPATH = C:\jaguar\space\bin\space.jag
 
 ifeq ($(findstring Microsoft,$(UNAME)),Microsoft)
-    VJAGFOLDER=../../virtualjaguar/
-    ROMPATH=c:\jaguar\space\bin\space.jag
+    VJAGFOLDER=/mnt/e/virtualjaguar/
+    ROMPATH=e:\\virtualjaguar\\software\\space.jag
 else ifeq ($(findstring NT-5.1,$(VARIABLE)),CYGWIN)
     VJAGFOLDER=../../virtualjaguar
 else
@@ -23,8 +23,14 @@ else
 endif
 
 DOCKER = docker.exe run --rm -v c:/jaguar/space/:/usr/src/compile --workdir /usr/src/compile/src toarnold/jaguarvbcc:0.9f
-CC = vc
-AS = ~/vasm/vasmjagrisc_madmac
+CC = vbccm68k
+M68KAS = vasmm68k_mot
+
+AS = vasmjagrisc_madmac
+
+LD = vlink
+LDFLAGS = -bjagsrv -x -L/home/luigi/vbcc/targets/m68k-jaguar/lib -Tjaguar-elf.ld -nostdlib -minalign 4 -Bstatic -Cvbcc
+
 JAGINCLUDE = /opt/jagdev/target/m68k-jaguar/include
 CONVERT = $(TOOLPATH)/converter.exe --target-dir images/ 
 
@@ -40,7 +46,8 @@ all: build
 
 build:	$(IMAGES) $(OBJFILES)
 	cp ../../u235/dsp.obj ../obj/u235.obj
-	$(DOCKER) $(CC) -v -O0 +jaguar.cfg -lm -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj
+#	$(CC) -v -O0 +jaguar.cfg -lm -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj
+	$(LD) $(LDFLAGS) -L$(VBCC)/targets/m68k-jaguar/lib -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj $(VBCC)/targets/m68k-jaguar/lib/startup.o -lm -ljag -lvc
 
 clean:
 	-rm ../obj/gfx/*
@@ -48,7 +55,7 @@ clean:
 	-rm ../bin/*
 
 run:
-        #Adjust this path to your configuration.
+	cp $(BINPATH)$(BINFILE) $(VJAGFOLDER)/software
 	$(VJAGFOLDER)virtualjaguar.exe --alpine $(ROMPATH)
 
 upload:
@@ -62,12 +69,11 @@ emu:
 
 $(OBJPATH)%.o: %.c %.h
 	@mkdir -p $(@D)
-#	$(DOCKER) $(CC) -I$(SRCPATH) +jaguar.cfg -c -c99 -o $@ $?
-	$(CC) -I$(SRCPATH) +jaguar.cfg -I/opt/jagdev/target/m68k-jaguar/include -c -c99 -o $@ $?
+	$(CC) -O=0 -I$(SRCPATH) -I/opt/jagdev/target/m68k-jaguar/include -c99 $< -o=$(OBJPATH)$*.asm
+	$(M68KAS) -I$(SRCPATH) -I/opt/jagdev/target/m68k-jaguar/include $(OBJPATH)$*.asm -Fvobj -o $@
 
 $(OBJPATH)%.o: %.asm
-#	$(DOCKER) $(CC) +jaguar.cfg -c -c99 -o $@ $?
-	$(CC) +jaguar.cfg -I/opt/jagdev/target/m68k-jaguar/include -c -c99 -o $@ $?
+	$(M68KAS) -I$(SRCPATH) -I/opt/jagdev/target/m68k-jaguar/include -phxass $< -Fvobj -o $@
 
 $(OBJPATH)%.o: %.tom.s
 	$(AS) -L $@.lst $? -I$(JAGINCLUDE) -I$(SRCPATH) -Fvobj -mgpu -o $@
