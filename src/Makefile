@@ -1,5 +1,5 @@
 BINFILE = space.jag
- 
+
 ROOT = $(shell cd ..; pwd)
 SRCPATH = $(ROOT)/src/
 BINPATH = $(ROOT)/bin/
@@ -23,7 +23,7 @@ else
 endif
 
 DOCKER = docker.exe run --rm -v c:/jaguar/space/:/usr/src/compile --workdir /usr/src/compile/src toarnold/jaguarvbcc:0.9f
-CC = vbccm68k
+CC = vc
 M68KAS = vasmm68k_mot
 
 AS = vasmjagrisc_madmac
@@ -46,8 +46,7 @@ all: build
 
 build:	$(IMAGES) $(OBJFILES)
 	cp ../../u235/dsp.obj ../obj/u235.obj
-#	$(CC) -v -O0 +jaguar.cfg -lm -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj
-	$(LD) $(LDFLAGS) -L$(VBCC)/targets/m68k-jaguar/lib -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj $(VBCC)/targets/m68k-jaguar/lib/startup.o -lm -ljag -lvc
+	$(CC) -v -O0 +jaguar.cfg -lm -o $(BINPATH)$(BINFILE) $(OBJFILES) ../obj/u235.obj
 
 clean:
 	-rm ../obj/gfx/*
@@ -69,11 +68,10 @@ emu:
 
 $(OBJPATH)%.o: %.c %.h
 	@mkdir -p $(@D)
-	$(CC) -O=0 -I$(SRCPATH) -I/opt/jagdev/target/m68k-jaguar/include -c99 $< -o=$(OBJPATH)$*.asm
-	$(M68KAS) -I$(SRCPATH) -I/opt/jagdev/target/m68k-jaguar/include $(OBJPATH)$*.asm -Fvobj -o $@
+	$(CC) -I$(SRCPATH) +jaguar.cfg -I/opt/jagdev/target/m68k-jaguar/include -c -c99 -o $@ $?
 
 $(OBJPATH)%.o: %.asm
-	$(M68KAS) -I$(SRCPATH) -I/opt/jagdev/target/m68k-jaguar/include -phxass $< -Fvobj -o $@
+	$(CC) +jaguar.cfg -I/opt/jagdev/target/m68k-jaguar/inclujde -c -c99 -o $@ $?
 
 $(OBJPATH)%.o: %.tom.s
 	$(AS) -L $@.lst $? -I$(JAGINCLUDE) -I$(SRCPATH) -Fvobj -mgpu -o $@
