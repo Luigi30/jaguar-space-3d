@@ -10,6 +10,7 @@
 #include "dsp.h"
 #include "gpu.h"
 #include "fixed.h"
+#include "log.h"
 
 typedef struct matrix44_t {
   FIXED_32 data[4][4];

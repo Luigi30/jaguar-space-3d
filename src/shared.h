@@ -18,8 +18,6 @@
 #define BRANCH_CC_GT 2
 #define BRANCH_CC_OPFLAG 3
 
-extern void WriteEmuLog(__reg("d0") unsigned char c);
-
 typedef struct coordinate_t {
   uint16_t x, y;
 } Coordinate;

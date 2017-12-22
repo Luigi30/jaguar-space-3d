@@ -1053,6 +1053,8 @@ _gpu_project_and_draw_triangle::
 	;; Calculate the dot product of V and p1 vector
 	FIXED_DOT_PRODUCT	r2,r3,r4, r20,r21,r22, r6
 
+	;; TODO: Clamp to 0.000-0.999
+	
 	movei	#_gpu_tri_facing_ratio,TEMP1
 	store	r6,(TEMP1)
 

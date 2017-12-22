@@ -6,7 +6,7 @@ BINPATH = $(ROOT)/bin/
 OBJPATH = $(ROOT)/obj/
 TOOLPATH= $(ROOT)/tools/
 
-OBJFILES = $(OBJPATH)main.o $(OBJPATH)utils/list.o $(OBJPATH)utils/list_functions.o $(OBJPATH)fixed.o $(OBJPATH)gfx/blit.o $(OBJPATH)mobj.o $(OBJPATH)images.o $(OBJPATH)gfx/palette.o $(OBJPATH)paldata.o $(OBJPATH)dsp.o $(OBJPATH)dsp_68k.o $(OBJPATH)dsp_matrix.o $(OBJPATH)matrix.o $(OBJPATH)linedraw.o $(OBJPATH)gpu.o $(OBJPATH)gpu_68k.o $(OBJPATH)matrix_68k.o $(OBJPATH)matrix_multiplication.o $(OBJPATH)sound_68k.o $(OBJPATH)cube.o
+OBJFILES = $(OBJPATH)main.o $(OBJPATH)utils/list.o $(OBJPATH)utils/list_functions.o $(OBJPATH)fixed.o $(OBJPATH)gfx/blit.o $(OBJPATH)mobj.o $(OBJPATH)images.o $(OBJPATH)gfx/palette.o $(OBJPATH)paldata.o $(OBJPATH)dsp.o $(OBJPATH)dsp_68k.o $(OBJPATH)dsp_matrix.o $(OBJPATH)matrix.o $(OBJPATH)linedraw.o $(OBJPATH)gpu.o $(OBJPATH)gpu_68k.o $(OBJPATH)matrix_68k.o $(OBJPATH)matrix_multiplication.o $(OBJPATH)sound_68k.o $(OBJPATH)cube.o $(OBJPATH)log.o
 IMAGES = images/atarifont.s images/atarifont8x8.s
 
 UNAME := $(shell uname -a)
@@ -55,7 +55,7 @@ clean:
 
 run:
 	cp $(BINPATH)$(BINFILE) $(VJAGFOLDER)/software
-	$(VJAGFOLDER)virtualjaguar.exe --alpine $(ROMPATH)
+	cd $(VJAGFOLDER); ./virtualjaguar.exe --alpine $(ROMPATH)
 
 upload:
 	-jcp -r
@@ -63,8 +63,8 @@ upload:
 	jcp -c $(BINPATH)$(BINFILE)
 
 emu:
-#	pscp luigi@172.26.218.203:virtualjaguar/release/virtualjaguar.exe ../../virtualjaguar
-
+	cd ~/jaguar/virtualjaguar; ./cross-compile
+	cp ~/jaguar/virtualjaguar/release/virtualjaguar.exe $(VJAGFOLDER)
 
 $(OBJPATH)%.o: %.c %.h
 	@mkdir -p $(@D)

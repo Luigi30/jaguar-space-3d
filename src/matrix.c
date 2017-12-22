@@ -33,74 +33,45 @@ void Matrix44_Identity(Matrix44 *m)
 
 void Matrix44_Multiply_Matrix44(Matrix44 *left, Matrix44 *right, Matrix44 *result)
 {	
-	Matrix44 *buffer = calloc(1, sizeof(Matrix44));
+  Matrix44 *buffer = calloc(1, sizeof(Matrix44));
 
-	jag_gpu_wait();
+  jag_gpu_wait();
 
-	M_MultLeft = left;
-	M_MultRight = right;
-	M_MultResult = result;
+  M_MultLeft = left;
+  M_MultRight = right;
+  M_MultResult = result;
 
-	/*
-	sprintf(skunkoutput, "M_MultLeft: %p, M_MultRight: %p, M_MultResult: %p, gpu_matrix_result: %p\n", M_MultLeft, M_MultRight, M_MultResult, &gpu_matrix_result);
-	skunkCONSOLEWRITE(skunkoutput);
+  GPU_MMULT_START();
+  jag_gpu_wait();
+
+  /*
+  sprintf(skunkoutput, "MMULT: Left\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
+	  left->data[0][0], left->data[0][1], left->data[0][2], left->data[0][3], 
+	  left->data[1][0], left->data[1][1], left->data[1][2], left->data[1][3], 
+	  left->data[2][0], left->data[2][1], left->data[2][2], left->data[2][3], 
+	  left->data[3][0], left->data[3][1], left->data[3][2], left->data[3][3]
+	  );
+  EmuLog_String(skunkoutput);
 	
-	sprintf(skunkoutput, "MMULT: Left\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
-		left->data[0][0], left->data[0][1], left->data[0][2], left->data[0][3], 
-		left->data[1][0], left->data[1][1], left->data[1][2], left->data[1][3], 
-		left->data[2][0], left->data[2][1], left->data[2][2], left->data[2][3], 
-		left->data[3][0], left->data[3][1], left->data[3][2], left->data[3][3]
-	);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "MMULT: Right\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
-		right->data[0][0], right->data[0][1], right->data[0][2], right->data[0][3], 
-		right->data[1][0], right->data[1][1], right->data[1][2], right->data[1][3], 
-		right->data[2][0], right->data[2][1], right->data[2][2], right->data[2][3], 
-		right->data[3][0], right->data[3][1], right->data[3][2], right->data[3][3]
-	);
-	skunkCONSOLEWRITE(skunkoutput);
-	*/
-	
-	sprintf(skunkoutput, "GPU_MMULT_START: left %p right %p result %p\n", left, right, result);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	GPU_MMULT_START();
-	jag_gpu_wait();
-	
-	/*
-	sprintf(skunkoutput, "MMULT: GPU Left\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
-		M_MultLeft->data[0][0], M_MultLeft->data[0][1], M_MultLeft->data[0][2], M_MultLeft->data[0][3], 
-		M_MultLeft->data[1][0], M_MultLeft->data[1][1], M_MultLeft->data[1][2], M_MultLeft->data[1][3], 
-		M_MultLeft->data[2][0], M_MultLeft->data[2][1], M_MultLeft->data[2][2], M_MultLeft->data[2][3], 
-		M_MultLeft->data[3][0], M_MultLeft->data[3][1], M_MultLeft->data[3][2], M_MultLeft->data[3][3]
-	);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "MMULT: GPU Right\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
-		M_MultRight->data[0][0], M_MultRight->data[0][1], M_MultRight->data[0][2], M_MultRight->data[0][3], 
-		M_MultRight->data[1][0], M_MultRight->data[1][1], M_MultRight->data[1][2], M_MultRight->data[1][3], 
-		M_MultRight->data[2][0], M_MultRight->data[2][1], M_MultRight->data[2][2], M_MultRight->data[2][3], 
-		M_MultRight->data[3][0], M_MultRight->data[3][1], M_MultRight->data[3][2], M_MultRight->data[3][3]
-	);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "MMULT: gpu_matrix_result\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
-		(&gpu_matrix_result)->data[0][0], (&gpu_matrix_result)->data[0][1], (&gpu_matrix_result)->data[0][2], (&gpu_matrix_result)->data[0][3], 
-		(&gpu_matrix_result)->data[1][0], (&gpu_matrix_result)->data[1][1], (&gpu_matrix_result)->data[1][2], (&gpu_matrix_result)->data[1][3], 
-		(&gpu_matrix_result)->data[2][0], (&gpu_matrix_result)->data[2][1], (&gpu_matrix_result)->data[2][2], (&gpu_matrix_result)->data[2][3], 
-		(&gpu_matrix_result)->data[3][0], (&gpu_matrix_result)->data[3][1], (&gpu_matrix_result)->data[3][2], (&gpu_matrix_result)->data[3][3]
-	);
-	skunkCONSOLEWRITE(skunkoutput);
-	
-	sprintf(skunkoutput, "MMULT: Result\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
-		result->data[0][0], result->data[0][1], result->data[0][2], result->data[0][3], 
-		result->data[1][0], result->data[1][1], result->data[1][2], result->data[1][3], 
-		result->data[2][0], result->data[2][1], result->data[2][2], result->data[2][3], 
-		result->data[3][0], result->data[3][1], result->data[3][2], result->data[3][3]
-	);
-	skunkCONSOLEWRITE(skunkoutput);
-	*/
+  sprintf(skunkoutput, "MMULT: Right\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
+	  right->data[0][0], right->data[0][1], right->data[0][2], right->data[0][3], 
+	  right->data[1][0], right->data[1][1], right->data[1][2], right->data[1][3], 
+	  right->data[2][0], right->data[2][1], right->data[2][2], right->data[2][3], 
+	  right->data[3][0], right->data[3][1], right->data[3][2], right->data[3][3]
+	  );
+  EmuLog_String(skunkoutput);
+
+  sprintf(skunkoutput, "GPU_MMULT_START: left %p right %p result %p\n", left, right, result);
+  EmuLog_String(skunkoutput);
+
+  sprintf(skunkoutput, "MMULT: Result\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n %08x %08x %08x %08x\n",
+	  result->data[0][0], result->data[0][1], result->data[0][2], result->data[0][3], 
+	  result->data[1][0], result->data[1][1], result->data[1][2], result->data[1][3], 
+	  result->data[2][0], result->data[2][1], result->data[2][2], result->data[2][3], 
+	  result->data[3][0], result->data[3][1], result->data[3][2], result->data[3][3]
+	  );
+  EmuLog_String(skunkoutput);
+  */
 }
 
 const FIXED_32 ONE_DEGREE = (uint32_t)1143; //1 degree in radians == ~0.0174533 == ~1143/65535
@@ -161,7 +132,7 @@ void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX
 	mView->data[0][0] = s.x; mView->data[0][1] = s.y; mView->data[0][2] = s.z; mView->data[0][3] = 0;
 	mView->data[1][0] = u.x; mView->data[1][1] = u.y; mView->data[1][2] = u.z; mView->data[1][3] = 0;
 	mView->data[2][0] = -f.x; mView->data[2][1] = -f.y; mView->data[2][2] = -f.z; mView->data[2][3] = 0;
-	mView->data[3][0] = s.x; mView->data[3][1] = s.y; mView->data[3][2] = s.z; mView->data[3][3] = 0x00010000;
+	mView->data[3][0] = 0; mView->data[3][1] = 0; mView->data[3][2] = 0; mView->data[3][3] = 0x00010000;
 	
 	Matrix44_Identity(mViewTranslate);
 	mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;

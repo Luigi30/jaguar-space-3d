@@ -57,6 +57,26 @@ void clear_video_buffer(uint8_t *buffer){
 int main() {
   //set correct endianness
   MMIO32(G_END) = 0x00070007;
+
+  GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
+  Matrix44 *left = calloc(1, sizeof(Matrix44));
+  Matrix44 *right = calloc(1, sizeof(Matrix44));
+  Matrix44 *result = calloc(1, sizeof(Matrix44));
+
+  left->data[0][0] = 0x00010000;
+  left->data[1][1] = 0x00010000;
+  left->data[2][2] = 0x00010000;
+  left->data[3][3] = 0x00010000;
+
+  right->data[0][0] = 0x00010000;
+  right->data[1][1] = 0x00010000;
+  right->data[2][2] = 0x00010000;
+  right->data[2][3] = 0xFFFB0000;
+  right->data[3][3] = 0x00010000;
+  
+  Matrix44_Multiply_Matrix44(left, right, result);
+  
+  // while(true) {};
   
   tri_ndc_1 = calloc(1, sizeof(Vector4FX));
   tri_ndc_2 = calloc(1, sizeof(Vector4FX));
@@ -234,7 +254,7 @@ int main() {
 	VIEW_CENTER = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
 	VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };
 	
-	WriteEmuLog('x');
+	EmuLog_String("Test\n");
 		
   while(true) {
 	  
@@ -253,20 +273,20 @@ int main() {
     
     clear_video_buffer(back_buffer);
 	
-	buildPerspectiveMatrix(mPerspective);
+    buildPerspectiveMatrix(mPerspective);
 
     /* Buffer is now clear. */
 	
-	/* 3D! */
-	//skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM\n");
+    /* 3D! */
+    //skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM\n");
     GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
 	
-	//skunkCONSOLEWRITE("Building view matrix\n");
-	buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
+    //skunkCONSOLEWRITE("Building view matrix\n");
+    buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
-    //cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
-    //cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
-    //cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+    cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
+    cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+    cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -275,7 +295,6 @@ int main() {
 
 	}
     
-	skunkCONSOLEWRITE("Reading controls\n");
     /* Triggers once per frame while these are pressed */
     if(stick0_lastread & STICK_UP) {
 
@@ -339,61 +358,44 @@ int main() {
 			VIEW_EYE.z += 0x00010000;
 			VIEW_CENTER.z += 0x00010000;
 		}
-	break;
+		break;
 	}
 	  
     stick0_lastread = stick0;
 
-	shape_Current = &cube;
+    shape_Current = &cube;
 	
-	GPU_BUILD_TRANSFORMATION_START();
-	jag_gpu_wait();
+    GPU_BUILD_TRANSFORMATION_START();
+    jag_gpu_wait();
     GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
 	
-	Vector4FX projectedPoints[3];
+    Vector4FX projectedPoints[3];
 	
-	object_M = m;
-	object_Triangle = &cube.triangles[0];	
+    object_M = m;
+    object_Triangle = &cube.triangles[0];	
 	
-	GPU_PROJECT_AND_DRAW_TRIANGLE();
+    GPU_PROJECT_AND_DRAW_TRIANGLE();
 	
-	jag_gpu_wait();
-	
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 8,  "EYE X: %s", VIEW_EYE.x);
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 16, "EYE Y: %s", VIEW_EYE.y);
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 24, "EYE Z: %s", VIEW_EYE.z);
-	
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1 nX: %s", tri_ndc_1->x);
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1 nY: %s", tri_ndc_1->y);
-	FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1 nZ: %s", tri_ndc_1->z);
+    jag_gpu_wait();
 
-	sprintf(skunkoutput, "v1 nX: %08X", tri_ndc_1->x);
-	BLIT_8x8_text_string(text_buffer, 16, 72, skunkoutput);	
-	sprintf(skunkoutput, "v1 nY: %08X", tri_ndc_1->y);
-	BLIT_8x8_text_string(text_buffer, 16, 80, skunkoutput);	
-	sprintf(skunkoutput, "v1 nZ: %08X", tri_ndc_1->z);
-	BLIT_8x8_text_string(text_buffer, 16, 88, skunkoutput);	
+    /*
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 8,  "EYE X: %s", VIEW_EYE.x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 16, "EYE Y: %s", VIEW_EYE.y);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 24, "EYE Z: %s", VIEW_EYE.z);
 	
-	sprintf(skunkoutput, "FACING: %08X", gpu_tri_facing_ratio);
-	BLIT_8x8_text_string(text_buffer, 16, 104, skunkoutput);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1 nX: %s", tri_ndc_1->x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1 nY: %s", tri_ndc_1->y);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1 nZ: %s", tri_ndc_1->z);
+
+    sprintf(skunkoutput, "v1 nX: %08X", tri_ndc_1->x);
+    BLIT_8x8_text_string(text_buffer, 16, 72, skunkoutput);	
+    sprintf(skunkoutput, "v1 nY: %08X", tri_ndc_1->y);
+    BLIT_8x8_text_string(text_buffer, 16, 80, skunkoutput);	
+    sprintf(skunkoutput, "v1 nZ: %08X", tri_ndc_1->z);
+    BLIT_8x8_text_string(text_buffer, 16, 88, skunkoutput);	
 	
-	/*
-    sprintf(skunkoutput, "R00 %08X R01 %08X R02 %08X R03 %08X\n", gpu_register_dump[0], gpu_register_dump[1], gpu_register_dump[2], gpu_register_dump[3]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R04 %08X R05 %08X R06 %08X R07 %08X\n", gpu_register_dump[4], gpu_register_dump[5], gpu_register_dump[6], gpu_register_dump[7]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R08 %08X R09 %08X R10 %08X R11 %08X\n", gpu_register_dump[8], gpu_register_dump[9], gpu_register_dump[10], gpu_register_dump[11]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R12 %08X R13 %08X R14 %08X R15 %08X\n", gpu_register_dump[12], gpu_register_dump[13], gpu_register_dump[14], gpu_register_dump[15]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R16 %08X R17 %08X R18 %08X R19 %08X\n", gpu_register_dump[16], gpu_register_dump[17], gpu_register_dump[18], gpu_register_dump[19]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R20 %08X R21 %08X R22 %08X R23 %08X\n", gpu_register_dump[20], gpu_register_dump[21], gpu_register_dump[22], gpu_register_dump[23]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R24 %08X R25 %08X R26 %08X R28 %08X\n", gpu_register_dump[24], gpu_register_dump[25], gpu_register_dump[26], gpu_register_dump[27]);
-    skunkCONSOLEWRITE(skunkoutput);
-    sprintf(skunkoutput, "R28 %08X R29 %08X R30 %08X R31 %08X\n", gpu_register_dump[28], gpu_register_dump[29], gpu_register_dump[30], gpu_register_dump[31]);
-    skunkCONSOLEWRITE(skunkoutput);
-	*/
+    sprintf(skunkoutput, "FACING: %08X", gpu_tri_facing_ratio);
+    BLIT_8x8_text_string(text_buffer, 16, 104, skunkoutput);
+    */
   }
 }

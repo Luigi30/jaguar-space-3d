@@ -838,7 +838,7 @@ _gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result
 _gpu_pc_result_ptr:		dc.l	0
 
 	.phrase
-_gpu_matrix_identity:		dc.l	$00010000,$00000000,$00000000,$00000000
+_gpu_matrix_identity:	dc.l	$00010000,$00000000,$00000000,$00000000
 				dc.l	$00000000,$00010000,$00000000,$00000000
 				dc.l	$00000000,$00000000,$00010000,$00000000
 				dc.l	$00000000,$00000000,$00000000,$00010000

@@ -20,6 +20,7 @@
 #include "fixed.h"
 
 #include "gpu.h"
+#include "log.h"
 
 #define FILL_LONG_WITH_BYTE(b) (b<<24 | b<<16 | b<<8 | b)
 
