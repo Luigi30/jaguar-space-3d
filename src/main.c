@@ -197,7 +197,7 @@ int main() {
   //Init cube
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
-    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(2), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
     cube_ptr->triangles = cube_triangles;
@@ -206,6 +206,7 @@ int main() {
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
 
+  /*
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(-2), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
@@ -216,6 +217,7 @@ int main() {
     sle->shape_Data = cube_ptr;
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
+  */
 
   //Init transformation matrix
   m = calloc(1, sizeof(Matrix44));
@@ -371,24 +373,22 @@ int main() {
 	jag_gpu_wait();
       }
 
-    /*
     FIXED_PRINT_TO_BUFFER(text_buffer, 16, 8,  "EYE X: %s", VIEW_EYE.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 16, 16, "EYE Y: %s", VIEW_EYE.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 16, 24, "EYE Z: %s", VIEW_EYE.z);
-	
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1 nX: %s", tri_ndc_1->x);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1 nY: %s", tri_ndc_1->y);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1 nZ: %s", tri_ndc_1->z);
 
-    sprintf(skunkoutput, "v1 nX: %08X", tri_ndc_1->x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1  X: %s", tri_ndc_1->x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1  Y: %s", tri_ndc_1->y);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1  Z: %s", tri_ndc_1->z);
+
+    sprintf(skunkoutput, "v1  X: %08X", tri_ndc_1->x);
     BLIT_8x8_text_string(text_buffer, 16, 72, skunkoutput);	
-    sprintf(skunkoutput, "v1 nY: %08X", tri_ndc_1->y);
+    sprintf(skunkoutput, "v1  Y: %08X", tri_ndc_1->y);
     BLIT_8x8_text_string(text_buffer, 16, 80, skunkoutput);	
-    sprintf(skunkoutput, "v1 nZ: %08X", tri_ndc_1->z);
-    BLIT_8x8_text_string(text_buffer, 16, 88, skunkoutput);	
+    sprintf(skunkoutput, "v1  Z: %08X", tri_ndc_1->z);
+    BLIT_8x8_text_string(text_buffer, 16, 88, skunkoutput);
 	
     sprintf(skunkoutput, "FACING: %08X", gpu_tri_facing_ratio);
     BLIT_8x8_text_string(text_buffer, 16, 104, skunkoutput);
-    */
   }
 }

@@ -869,6 +869,27 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
+	;; store the NDC coordinates of point 1 for debugging
+	movei	#_gpu_tri_point_1,r10
+	movei	#_tri_ndc_1,r11
+	load	(r10),r12	
+	load	(r11),r13
+	store	r12,(r13)
+	addq	#4,r10
+	addq	#4,r13
+	load	(r10),r12	
+	store	r12,(r13)
+	addq	#4,r10
+	addq	#4,r13
+	load	(r10),r12	
+	store	r12,(r13)
+
+	;; Skip this unless 1 >= p1.z < 2
+	movei	#.advance_triangle,r30
+	btst	#16,r12
+	jump	eq,(r30)
+	nop
+
 .determine_triangle_winding:
 	WIND_POINT_1	.equr	r6
 	WIND_POINT_2	.equr	r7
@@ -1034,36 +1055,29 @@ _gpu_project_and_draw_triangle::
 	load	(TEMP2),r21
 	addq	#4,TEMP2
 	load	(TEMP2),r22
-
-	;; store the NDC coordinates of point 1 for debugging
-	movei	#_gpu_tri_point_1,r10
-	movei	#_tri_ndc_1,r11
-	load	(r10),r12	
-	load	(r11),r13
-	store	r12,(r13)
-	addq	#4,r10
-	addq	#4,r13
-	load	(r10),r12	
-	store	r12,(r13)
-	addq	#4,r10
-	addq	#4,r13
-	load	(r10),r12	
-	store	r12,(r13)
 	
 	;; Calculate the dot product of V and p1 vector
 	FIXED_DOT_PRODUCT	r2,r3,r4, r20,r21,r22, r6
 
-	;; TODO: Clamp to 0.000-0.999
-	
-	movei	#_gpu_tri_facing_ratio,TEMP1
-	store	r6,(TEMP1)
-
+	;;Clamp to 0.999
 	movei	#.advance_triangle,r30
 	btst	#31,r6
 	jump	ne,(r30)	; if surface normal is positive, it's visible
 	nop
 
-.make_screen_coordinates:
+	;; We are indeed drawing this triangle.
+	;; Clamp r6 to 0x0000FFFF.
+	btst	#16,r6
+	jr	eq,.store_ratio
+	nop
+
+	movei	#$0000FFFF,r6
+	
+.store_ratio:
+	movei	#_gpu_tri_facing_ratio,TEMP1
+	store	r6,(TEMP1)
+
+.make_screen_coordinates:	
 	movei	#_gpu_tri_point_1,r10
 	movei	#_gpu_tri_point_2,r11
 	movei	#_gpu_tri_point_3,r12
