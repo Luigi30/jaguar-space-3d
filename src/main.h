@@ -36,6 +36,11 @@ typedef struct shape_t {
   Vector3FX **triangles;	//Pointer to the triangles array of the shape.
 } Shape;
 
+typedef struct shape_list_entry_t {
+  struct Node shape_Node;
+  Shape *shape_Data;
+} ShapeListEntry;
+
 /* background pixel buffers - 8bpp */
 uint8_t background_frame_0[SCREEN_WIDTH * SCREEN_HEIGHT];
 uint8_t background_frame_1[SCREEN_WIDTH * SCREEN_HEIGHT];

@@ -5,12 +5,14 @@
 #include <stdbool.h>
 
 #include "cube.h"
+#include "script.h"
 
 Vector3FX cameraTranslation;
 
 Matrix44 *object_M;
 Vector3FX **object_Triangle;
 
+struct List *scene_Shapes;
 Shape *shape_Current;
 
 extern uint32_t gpu_register_dump[32];
@@ -25,6 +27,7 @@ op_stop_object *make_stopobj() {
   stopobj->int_flag = 1;
   return stopobj;
 }
+
 op_stop_object *stopobj;
 
 void OP_ResetObjects()
@@ -58,26 +61,6 @@ int main() {
   //set correct endianness
   MMIO32(G_END) = 0x00070007;
 
-  GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
-  Matrix44 *left = calloc(1, sizeof(Matrix44));
-  Matrix44 *right = calloc(1, sizeof(Matrix44));
-  Matrix44 *result = calloc(1, sizeof(Matrix44));
-
-  left->data[0][0] = 0x00010000;
-  left->data[1][1] = 0x00010000;
-  left->data[2][2] = 0x00010000;
-  left->data[3][3] = 0x00010000;
-
-  right->data[0][0] = 0x00010000;
-  right->data[1][1] = 0x00010000;
-  right->data[2][2] = 0x00010000;
-  right->data[2][3] = 0xFFFB0000;
-  right->data[3][3] = 0x00010000;
-  
-  Matrix44_Multiply_Matrix44(left, right, result);
-  
-  // while(true) {};
-  
   tri_ndc_1 = calloc(1, sizeof(Vector4FX));
   tri_ndc_2 = calloc(1, sizeof(Vector4FX));
   tri_ndc_3 = calloc(1, sizeof(Vector4FX));
@@ -198,75 +181,83 @@ int main() {
     mobj_background.graphic->p1.index  = 0;
   }
 
-	skunkCONSOLEWRITE("background layer initialized\n");
+  skunkCONSOLEWRITE("background layer initialized\n");
 
-	//Start the list here.
-	jag_attach_olp(mobj_background.graphic);
+  //Start the list here.
+  jag_attach_olp(mobj_background.graphic);
 
-	skunkCONSOLEWRITE("object list attached\n");
+  skunkCONSOLEWRITE("object list attached\n");
 		
-	uint32_t stick0, stick0_lastread;
-	uint16_t framecounter = 0;
-	uint32_t framenumber = 0;
+  uint32_t stick0, stick0_lastread;
+  uint16_t framecounter = 0;
+  uint32_t framenumber = 0;
 
-	//Init cube
-	Shape cube;
-	cube.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-	cube.triangles = cube_triangles;
-	
-	Shape cube2;
-	cube2.translation = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube2.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube2.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-	cube2.triangles = cube_triangles;
-	
-	Shape cube3;
-	cube3.translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube3.rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-	cube3.scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-	cube3.triangles = cube_triangles;
+  NewList((struct List *)scene_Shapes);
 
-	//Init transformation matrix
-	m = calloc(1, sizeof(Matrix44));
-	mTranslation = calloc(1, sizeof(Matrix44));
-	mRotation = calloc(1, sizeof(Matrix44));
-	mModel = calloc(1, sizeof(Matrix44));
+  //Init cube
+  {
+    Shape *cube_ptr = calloc(1, sizeof(Shape));
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(2), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+    cube_ptr->triangles = cube_triangles;
+    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
+    sle->shape_Data = cube_ptr;
+    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
+  }
 
-	mPerspective = calloc(1, sizeof(Matrix44));
-	buildPerspectiveMatrix(mPerspective);
+  {
+    Shape *cube_ptr = calloc(1, sizeof(Shape));
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(-2), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+    cube_ptr->triangles = cube_triangles;
+    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
+    sle->shape_Data = cube_ptr;
+    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
+  }
 
-	skunkCONSOLEWRITE("Entering main loop.\n");
+  //Init transformation matrix
+  m = calloc(1, sizeof(Matrix44));
+  mTranslation = calloc(1, sizeof(Matrix44));
+  mRotation = calloc(1, sizeof(Matrix44));
+  mModel = calloc(1, sizeof(Matrix44));
 
-	//Init Matrix44_VectorProduct
-	mvp_vector = calloc(1, sizeof(Vector3FX));
-	mvp_matrix = calloc(1, sizeof(Matrix44));
-	mvp_result = calloc(1, sizeof(Vector3FX));
+  mPerspective = calloc(1, sizeof(Matrix44));
+  buildPerspectiveMatrix(mPerspective);
+
+  skunkCONSOLEWRITE("Entering main loop.\n");
+
+  //Init Matrix44_VectorProduct
+  mvp_vector = calloc(1, sizeof(Vector3FX));
+  mvp_matrix = calloc(1, sizeof(Matrix44));
+  mvp_result = calloc(1, sizeof(Vector3FX));
 	
-	mView = calloc(1, sizeof(Matrix44));
-	mViewTranslate = calloc(1, sizeof(Matrix44));
+  mView = calloc(1, sizeof(Matrix44));
+  mViewTranslate = calloc(1, sizeof(Matrix44));
 	
-	Vector3FX transformedVertexList[4];
+  Vector3FX transformedVertexList[4];
 	
-	//Init view parameters
-	VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00050000 };
-	VIEW_CENTER = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
-	VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };
-	
-	EmuLog_String("Test\n");
+  //Init view parameters
+  VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00050000 };
+  VIEW_CENTER = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
+  VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };
+
+  int r = LISP_eval("(+ 1 1)");
+  sprintf(skunkoutput, "result: %d", r);
+  EmuLog_String(skunkoutput);
 		
   while(true) {
 	  
     if(front_buffer == background_frame_0)
       {
-	      front_buffer = background_frame_1;
-	      back_buffer  = background_frame_0;
+	front_buffer = background_frame_1;
+	back_buffer  = background_frame_0;
       }
     else
       {
-	      front_buffer = background_frame_0;
-	      back_buffer  = background_frame_1;
+	front_buffer = background_frame_0;
+	back_buffer  = background_frame_1;
       }
 
     jag_wait_vbl();
@@ -278,22 +269,20 @@ int main() {
     /* Buffer is now clear. */
 	
     /* 3D! */
-    //skunkCONSOLEWRITE("GPU_LOAD_MMULT_PROGRAM\n");
     GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
 	
-    //skunkCONSOLEWRITE("Building view matrix\n");
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 	
-    cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
-    cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
-    cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+    //cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
+    //cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
+    //cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
     if((framecounter % 60) == 0)
-	{
+      {
 
-	}
+      }
     
     /* Triggers once per frame while these are pressed */
     if(stick0_lastread & STICK_UP) {
@@ -312,71 +301,75 @@ int main() {
     stick0 = jag_read_stick0(STICK_READ_ALL);
     /* Debounced - only triggers once per press */
     switch(stick0 ^ stick0_lastread)
-	{
-	case STICK_UP:
-		if(~stick0_lastread & STICK_UP)
-		{
-			VIEW_EYE.y += 0x00010000;
-			VIEW_CENTER.y += 0x00010000;
-		}
+      {
+      case STICK_UP:
+	if(~stick0_lastread & STICK_UP)
+	  {
+	    VIEW_EYE.y += 0x00010000;
+	    VIEW_CENTER.y += 0x00010000;
+	  }
 	break;
-	case STICK_DOWN:
-		if(~stick0_lastread & STICK_DOWN)
-		{
-			VIEW_EYE.y -= 0x00010000;
-			VIEW_CENTER.y -= 0x00010000;
-		}
+      case STICK_DOWN:
+	if(~stick0_lastread & STICK_DOWN)
+	  {
+	    VIEW_EYE.y -= 0x00010000;
+	    VIEW_CENTER.y -= 0x00010000;
+	  }
 	break;
-	case STICK_LEFT:
-		if(~stick0_lastread & STICK_LEFT)
-		{
-			VIEW_EYE.x -= 0x00010000;
-			VIEW_CENTER.x -= 0x00010000;
-		}
+      case STICK_LEFT:
+	if(~stick0_lastread & STICK_LEFT)
+	  {
+	    VIEW_EYE.x -= 0x00010000;
+	    VIEW_CENTER.x -= 0x00010000;
+	  }
 	break;
-	case STICK_RIGHT:
-		if(~stick0_lastread & STICK_RIGHT)
-		{
-			VIEW_EYE.x += 0x00010000;
-			VIEW_CENTER.x += 0x00010000;
-		}
+      case STICK_RIGHT:
+	if(~stick0_lastread & STICK_RIGHT)
+	  {
+	    VIEW_EYE.x += 0x00010000;
+	    VIEW_CENTER.x += 0x00010000;
+	  }
 	break;
-	case STICK_A:
-		//if(~stick0_lastread & STICK_A) printf("A\n");
-		if(~stick0_lastread & STICK_A)
-		{
-			VIEW_EYE.z -= 0x00010000;
-			VIEW_CENTER.z -= 0x00010000;
-		}
+      case STICK_A:
+	//if(~stick0_lastread & STICK_A) printf("A\n");
+	if(~stick0_lastread & STICK_A)
+	  {
+	    VIEW_EYE.z -= 0x00010000;
+	    VIEW_CENTER.z -= 0x00010000;
+	  }
 	break;
-	case STICK_B:
-		//if(~stick0_lastread & STICK_B) printf("B\n");
+      case STICK_B:
+	//if(~stick0_lastread & STICK_B) printf("B\n");
 	break;
-	case STICK_C:
-		if(~stick0_lastread & STICK_C)
-		{
-			VIEW_EYE.z += 0x00010000;
-			VIEW_CENTER.z += 0x00010000;
-		}
-		break;
-	}
+      case STICK_C:
+	if(~stick0_lastread & STICK_C)
+	  {
+	    VIEW_EYE.z += 0x00010000;
+	    VIEW_CENTER.z += 0x00010000;
+	  }
+	break;
+      }
 	  
     stick0_lastread = stick0;
 
-    shape_Current = &cube;
+    for(ShapeListEntry *entry = (ShapeListEntry *)scene_Shapes->lh_Head; entry->shape_Node.ln_Succ != NULL; entry = (ShapeListEntry *)entry->shape_Node.ln_Succ)
+      {
+	shape_Current = entry->shape_Data;
+
+	GPU_LOAD_MMULT_PROGRAM();
+	GPU_BUILD_TRANSFORMATION_START();
+	jag_gpu_wait();
+	GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
+
+	Vector4FX projectedPoints[3];
 	
-    GPU_BUILD_TRANSFORMATION_START();
-    jag_gpu_wait();
-    GPU_LOAD_LINEDRAW_PROGRAM(); //Switch GPU to line blitting
+	object_M = m;
+	object_Triangle = &entry->shape_Data->triangles[0];	
 	
-    Vector4FX projectedPoints[3];
+	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	
-    object_M = m;
-    object_Triangle = &cube.triangles[0];	
-	
-    GPU_PROJECT_AND_DRAW_TRIANGLE();
-	
-    jag_gpu_wait();
+	jag_gpu_wait();
+      }
 
     /*
     FIXED_PRINT_TO_BUFFER(text_buffer, 16, 8,  "EYE X: %s", VIEW_EYE.x);
