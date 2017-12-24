@@ -35,6 +35,8 @@ void gpu_blit_triangle(Vector3FX *vertexes, uint32_t color);
 extern uint8_t gpu_matrix_multiply_program_start[];
 extern uint8_t gpu_matrix_multiply_program_end[];
 
+extern uint8_t gpu_matrix_rotation_entry[];
+
 extern const uint8_t gpu_matrix_multiply[];
 extern const uint8_t gpu_matrix_multiply_end[];
 
@@ -42,6 +44,9 @@ typedef struct matrix44_t Matrix44;
 extern Matrix44 gpu_matrix_operand_1;
 extern Matrix44 gpu_matrix_operand_2;
 extern Matrix44 gpu_matrix_result;
+
+extern Vector3FX *gpu_matrix_ptr_vector;
+extern Matrix44 *gpu_matrix_ptr_result;
 
 extern Vector3FX *ptr_vertex_array;
 
@@ -53,6 +58,8 @@ extern Matrix44 *gpu_ptr_translation_matrix;
 extern Matrix44 *gpu_ptr_rotation_matrix;
 extern Matrix44 *gpu_ptr_camera_matrix;
 extern Matrix44 *gpu_ptr_transformation_matrix;
+
+void GPU_ROTATION_MATRIX_ENTRY();
 
 /* Object drawing */
 extern Matrix44 *object_M;

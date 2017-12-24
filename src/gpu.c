@@ -42,6 +42,12 @@ void GPU_PROJECT_AND_DRAW_TRIANGLE() {
 	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
 }
 
+#define MATRIX_ROTATION_ENTRY (0xF03000 + gpu_matrix_rotation_entry - gpu_matrix_multiply)
+void GPU_ROTATION_MATRIX_ENTRY() {
+	MMIO32(G_PC) = (uint32_t)(MATRIX_ROTATION_ENTRY);
+	MMIO32(G_CTRL) = MMIO32(G_CTRL) | 0x01;
+}
+
 #define GPU_WAIT() ( jag_gpu_wait() )
 
 /* GPU routines! */

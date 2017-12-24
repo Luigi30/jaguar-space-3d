@@ -337,8 +337,19 @@ _gpu_matrix_multiply_end::
 	COS_Z_DEGREES		.equr	r30
 
 	.phrase
+_gpu_matrix_rotation_entry::
+	GPU_REG_BANK_1			; ensure we start in register bank 1
+	movei	#stack_bank_1_end,SP	; set up the stack
+
+	GPU_JSR	_gpu_matrix_rotation
+
+	StopGPU
+
+	.phrase
 _gpu_matrix_rotation::
 	;; Build a rotation matrix for (X,Y,Z) degrees.
+	;; gpu_matrix_ptr_vector points to the rotation vector
+	;; gpu_matrix_ptr_result points to the output
 	LoadTrigTables
 
 	movei	#_gpu_matrix_ptr_result,PTR_MATRIX_ROT
@@ -352,6 +363,10 @@ _gpu_matrix_rotation::
 	load	(TEMP2),Y_DEGREES
 	addq	#4,TEMP2
 	load	(TEMP2),Z_DEGREES
+
+	shrq	#16,X_DEGREES
+	shrq	#16,Y_DEGREES
+	shrq	#16,Z_DEGREES
 
 .get_sin_X_cos_X:
 	move	X_DEGREES,TRIG_TABLE_OFFSET
@@ -828,8 +843,8 @@ _gpu_build_transformation_matrix_end::
 
 	;; Precalculate variables.
 	.phrase
-_gpu_matrix_ptr_result:		dc.l	0   ; storage for a pointer to a Matrix44
-_gpu_matrix_ptr_vector:		dc.l	0   ; storage for a pointer to a Vector3FX or Vector4FX
+_gpu_matrix_ptr_result::		dc.l	0   ; storage for a pointer to a Matrix44
+_gpu_matrix_ptr_vector::		dc.l	0   ; storage for a pointer to a Vector3FX or Vector4FX
 _gpu_matrix_vector:		dcb.l	4,0 ; storage for a Vector3FX or Vector4FX
 	
 	.phrase
@@ -845,10 +860,10 @@ _gpu_matrix_identity:	dc.l	$00010000,$00000000,$00000000,$00000000
 
 	;; 64-byte stack
 	.phrase
-stack_bank_0:	dcb.l	16,0
+stack_bank_0:	dcb.l	8,0
 stack_bank_0end:
 
-stack_bank_1:	dcb.l	16,0
+stack_bank_1:	dcb.l	8,0
 stack_bank_1_end:	
 	
 	.68000

@@ -198,26 +198,28 @@ int main() {
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(45), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
     cube_ptr->triangles = cube_triangles;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
+    sle->shape_Node.ln_Name = malloc(10);
+    strcpy(sle->shape_Node.ln_Name, "CUBE");
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
 
-  /*
-  {
+ {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
-    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(-2), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(5) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
     cube_ptr->triangles = cube_triangles;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
+    sle->shape_Node.ln_Name = malloc(10);
+    strcpy(sle->shape_Node.ln_Name, "PLAYER");
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
-  */
 
   //Init transformation matrix
   m = calloc(1, sizeof(Matrix44));
@@ -242,13 +244,15 @@ int main() {
 	
   //Init view parameters
   VIEW_EYE 	= (Vector3FX){ 0x00000000, 0x00000000, 0x00050000 };
-  VIEW_CENTER = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
+  VIEW_CENTER   = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
   VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };
 
   int r = LISP_eval("(+ 1 1)");
   sprintf(skunkoutput, "result: %d", r);
   EmuLog_String(skunkoutput);
-		
+
+  Matrix44 *mForward = calloc(1, sizeof(Matrix44));
+  
   while(true) {
 	  
     if(front_buffer == background_frame_0)
@@ -269,15 +273,30 @@ int main() {
     buildPerspectiveMatrix(mPerspective);
 
     /* Buffer is now clear. */
-	
-    /* 3D! */
+
     GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
-	
+    ShapeListEntry *player = (ShapeListEntry *)FindName(scene_Shapes, "PLAYER");
+    Shape *player_orientation = player->shape_Data;
+    VIEW_EYE = player->shape_Data->translation;
+
+    /*
+    //The center point is 1 unit forward from the translation.
+    Vector3FX FORWARD = (Vector3FX){0, 0, 0xFFFF0000};
+    //Rotate this vector by the player's rotation and then add it to VIEW_CENTER.
+    Matrix44_Rotation(player_orientation->rotation, mForward);
+
+    MMIO32(0x70000) = (uint32_t)mForward;
+    */
+
+    VIEW_CENTER = player->shape_Data->translation;
+    VIEW_CENTER.z -= 0x00010000;
+    
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
-	
-    //cube.rotation.x = (cube.rotation.x + 0x00010000) % 0x01680000;
-    //cube.rotation.y = (cube.rotation.y + 0x00010000) % 0x01680000;
-    //cube.rotation.z = (cube.rotation.z + 0x00010000) % 0x01680000;
+
+    Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
+    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
+    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -307,37 +326,32 @@ int main() {
       case STICK_UP:
 	if(~stick0_lastread & STICK_UP)
 	  {
-	    VIEW_EYE.y += 0x00010000;
-	    VIEW_CENTER.y += 0x00010000;
+	    player_orientation->translation.y += 0x00010000;
 	  }
 	break;
       case STICK_DOWN:
 	if(~stick0_lastread & STICK_DOWN)
 	  {
-	    VIEW_EYE.y -= 0x00010000;
-	    VIEW_CENTER.y -= 0x00010000;
+	    player_orientation->translation.y -= 0x00010000;
 	  }
 	break;
       case STICK_LEFT:
 	if(~stick0_lastread & STICK_LEFT)
 	  {
-	    VIEW_EYE.x -= 0x00010000;
-	    VIEW_CENTER.x -= 0x00010000;
+	    player_orientation->translation.x -= 0x00010000;
 	  }
 	break;
       case STICK_RIGHT:
 	if(~stick0_lastread & STICK_RIGHT)
 	  {
-	    VIEW_EYE.x += 0x00010000;
-	    VIEW_CENTER.x += 0x00010000;
+	    player_orientation->translation.x += 0x00010000;
 	  }
 	break;
       case STICK_A:
 	//if(~stick0_lastread & STICK_A) printf("A\n");
 	if(~stick0_lastread & STICK_A)
 	  {
-	    VIEW_EYE.z -= 0x00010000;
-	    VIEW_CENTER.z -= 0x00010000;
+	    player_orientation->translation.z -= 0x00010000;
 	  }
 	break;
       case STICK_B:
@@ -346,8 +360,7 @@ int main() {
       case STICK_C:
 	if(~stick0_lastread & STICK_C)
 	  {
-	    VIEW_EYE.z += 0x00010000;
-	    VIEW_CENTER.z += 0x00010000;
+	    player_orientation->translation.z += 0x00010000;
 	  }
 	break;
       }
@@ -356,6 +369,9 @@ int main() {
 
     for(ShapeListEntry *entry = (ShapeListEntry *)scene_Shapes->lh_Head; entry->shape_Node.ln_Succ != NULL; entry = (ShapeListEntry *)entry->shape_Node.ln_Succ)
       {
+	if(strcmp(entry->shape_Node.ln_Name, "PLAYER") == 0)
+	  continue; //Don't render the player object.
+	
 	shape_Current = entry->shape_Data;
 
 	GPU_LOAD_MMULT_PROGRAM();
@@ -373,22 +389,14 @@ int main() {
 	jag_gpu_wait();
       }
 
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 8,  "EYE X: %s", VIEW_EYE.x);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 16, "EYE Y: %s", VIEW_EYE.y);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 24, "EYE Z: %s", VIEW_EYE.z);
+    /*
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 8,  "TRANS  X: %s", player_orientation->translation.x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 16, "TRANS  Y: %s", player_orientation->translation.y);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 24, "TRANS  Z: %s", player_orientation->translation.z);
 
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 40, "v1  X: %s", tri_ndc_1->x);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 48, "v1  Y: %s", tri_ndc_1->y);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 16, 56, "v1  Z: %s", tri_ndc_1->z);
-
-    sprintf(skunkoutput, "v1  X: %08X", tri_ndc_1->x);
-    BLIT_8x8_text_string(text_buffer, 16, 72, skunkoutput);	
-    sprintf(skunkoutput, "v1  Y: %08X", tri_ndc_1->y);
-    BLIT_8x8_text_string(text_buffer, 16, 80, skunkoutput);	
-    sprintf(skunkoutput, "v1  Z: %08X", tri_ndc_1->z);
-    BLIT_8x8_text_string(text_buffer, 16, 88, skunkoutput);
-	
-    sprintf(skunkoutput, "FACING: %08X", gpu_tri_facing_ratio);
-    BLIT_8x8_text_string(text_buffer, 16, 104, skunkoutput);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 40, "ROTATE X: %s", player_orientation->rotation.x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 48, "ROTATE Y: %s", player_orientation->rotation.y);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 56, "ROTATE Z: %s", player_orientation->rotation.z);
+    */
   }
 }

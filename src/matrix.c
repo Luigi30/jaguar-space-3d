@@ -88,7 +88,7 @@ void Matrix44_Translation(Vector3FX translation, Matrix44 *result)
   
   DSP_Matrix_Start_ASM(dsp_matrix_translation);
 }
-	
+
 void Matrix44_Rotation(Vector3FX rotation, Matrix44 *result)
 {
 	FIXED_32 xDeg, yDeg, zDeg;
@@ -96,13 +96,16 @@ void Matrix44_Rotation(Vector3FX rotation, Matrix44 *result)
 	yDeg = (rotation.y >> 16) % 360;
 	zDeg = (rotation.z >> 16) % 360;
 
-	dsp_matrix_vector.x = xDeg;
-	dsp_matrix_vector.y = yDeg;
-	dsp_matrix_vector.z = zDeg;
-	dsp_matrix_ptr_result = result;
+	Vector3FX *tmp = calloc(1, sizeof(Vector3FX));
+	tmp->x = xDeg;
+	tmp->y = yDeg;
+	tmp->z = zDeg;
 
-	DSP_Matrix_Start_ASM(dsp_matrix_rotation);
-	jag_dsp_wait();
+	gpu_matrix_ptr_result = result;
+	gpu_matrix_ptr_vector = tmp;
+
+        GPU_ROTATION_MATRIX_ENTRY();
+	jag_gpu_wait();
 }
 
 void Matrix44_VectorProduct(Matrix44 *matrix, Vector3FX *vector, Vector4FX *destination)
