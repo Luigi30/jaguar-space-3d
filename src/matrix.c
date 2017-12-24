@@ -91,15 +91,10 @@ void Matrix44_Translation(Vector3FX translation, Matrix44 *result)
 
 void Matrix44_Rotation(Vector3FX rotation, Matrix44 *result)
 {
-	FIXED_32 xDeg, yDeg, zDeg;
-	xDeg = (rotation.x >> 16) % 360;
-	yDeg = (rotation.y >> 16) % 360;
-	zDeg = (rotation.z >> 16) % 360;
-
 	Vector3FX *tmp = calloc(1, sizeof(Vector3FX));
-	tmp->x = xDeg;
-	tmp->y = yDeg;
-	tmp->z = zDeg;
+	tmp->x = rotation.x & 0xFFFF0000;
+	tmp->y = rotation.y & 0xFFFF0000;
+	tmp->z = rotation.z & 0xFFFF0000;
 
 	gpu_matrix_ptr_result = result;
 	gpu_matrix_ptr_vector = tmp;
