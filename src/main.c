@@ -251,7 +251,8 @@ int main() {
   sprintf(skunkoutput, "result: %d", r);
   EmuLog_String(skunkoutput);
 
-  Matrix44 *mForward = calloc(1, sizeof(Matrix44));
+  Matrix44 *player_mForward = calloc(1, sizeof(Matrix44));
+  Matrix44 *player_mRight = calloc(1, sizeof(Matrix44));
   
   while(true) {
 	  
@@ -281,13 +282,21 @@ int main() {
 
     //The center point is 1 unit forward from the translation.
     Vector3FX FORWARD = (Vector3FX){0, 0, 0xFFFF0000};
-    //Rotate this vector by the player's rotation and then add it to VIEW_CENTER.
-    Matrix44_Rotation(player_orientation->rotation, mForward);
-
+    Vector3FX RIGHT = (Vector3FX){0x00010000, 0, 0};
+    //Rotate this vector by the player's rotation to produce the local FORWARD and RIGHT vectors.
+    Matrix44_Rotation(player_orientation->rotation, player_mForward);
+    Matrix44_Rotation(player_orientation->rotation, player_mRight);
+    
     Vector3FX f;
-    f.x = FIXED_MUL(mForward->data[0][0], FORWARD.x) + FIXED_MUL(mForward->data[0][1], FORWARD.y) + FIXED_MUL(mForward->data[0][2], FORWARD.z);
-    f.y = FIXED_MUL(mForward->data[1][0], FORWARD.x) + FIXED_MUL(mForward->data[1][1], FORWARD.y) + FIXED_MUL(mForward->data[1][2], FORWARD.z);
-    f.z = FIXED_MUL(mForward->data[2][0], FORWARD.x) + FIXED_MUL(mForward->data[2][1], FORWARD.y) + FIXED_MUL(mForward->data[2][2], FORWARD.z);
+    f.x = FIXED_MUL(player_mForward->data[0][0], FORWARD.x) + FIXED_MUL(player_mForward->data[0][1], FORWARD.y) + FIXED_MUL(player_mForward->data[0][2], FORWARD.z);
+    f.y = FIXED_MUL(player_mForward->data[1][0], FORWARD.x) + FIXED_MUL(player_mForward->data[1][1], FORWARD.y) + FIXED_MUL(player_mForward->data[1][2], FORWARD.z);
+    f.z = FIXED_MUL(player_mForward->data[2][0], FORWARD.x) + FIXED_MUL(player_mForward->data[2][1], FORWARD.y) + FIXED_MUL(player_mForward->data[2][2], FORWARD.z);
+
+    Vector3FX r;
+    r.x = FIXED_MUL(player_mRight->data[0][0], RIGHT.x) + FIXED_MUL(player_mRight->data[0][1], RIGHT.y) + FIXED_MUL(player_mRight->data[0][2], RIGHT.z);
+    r.y = FIXED_MUL(player_mRight->data[1][0], RIGHT.x) + FIXED_MUL(player_mRight->data[1][1], RIGHT.y) + FIXED_MUL(player_mRight->data[1][2], RIGHT.z);
+    r.z = FIXED_MUL(player_mRight->data[2][0], RIGHT.x) + FIXED_MUL(player_mRight->data[2][1], RIGHT.y) + FIXED_MUL(player_mRight->data[2][2], RIGHT.z);
+
 
     /*
     sprintf(skunkoutput, "Player rotation is %08X %08X %08X\n", player_orientation->rotation.x, player_orientation->rotation.y, player_orientation->rotation.z);
@@ -315,9 +324,9 @@ int main() {
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 
     Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
-    //cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
-    //cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
-    //cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
+    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -359,18 +368,26 @@ int main() {
       case STICK_LEFT:
 	if(~stick0_lastread & STICK_LEFT)
 	  {
-	    player_orientation->translation.x -= 0x00010000;
+	    player_orientation->translation.x -= r.x;
+	    player_orientation->translation.y -= r.y;
+	    player_orientation->translation.z -= r.z;
 	  }
 	break;
       case STICK_RIGHT:
 	if(~stick0_lastread & STICK_RIGHT)
 	  {
-	    player_orientation->translation.x += 0x00010000;
+	    player_orientation->translation.x += r.x;
+	    player_orientation->translation.y += r.y;
+	    player_orientation->translation.z += r.z;
 	  }
 	break;
       case STICK_A:
 	if(~stick0_lastread & STICK_A)
-	  player_orientation->translation.z -= 0x00010000;
+	  {
+	    player_orientation->translation.x -= f.x;
+	    player_orientation->translation.y -= f.y;
+	    player_orientation->translation.z -= f.z;
+	  }
 	break;
       case STICK_B:
 	if(~stick0_lastread & STICK_B)
@@ -378,7 +395,11 @@ int main() {
 	break;
       case STICK_C:
 	if(~stick0_lastread & STICK_C)
-	  player_orientation->translation.z += 0x00010000;
+	  {
+	    player_orientation->translation.x += f.x;
+	    player_orientation->translation.y += f.y;
+	    player_orientation->translation.z += f.z;
+	  }
 	break;
       case STICK_7:
 	{
@@ -415,10 +436,12 @@ int main() {
 	object_Triangle = &entry->shape_Data->triangles[0];	
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
-	
 	jag_gpu_wait();
+
+	//while(true) {};
       }
 
+    /*
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 8,  "TRANS  X: %s", player_orientation->translation.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 16, "TRANS  Y: %s", player_orientation->translation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 24, "TRANS  Z: %s", player_orientation->translation.z);
@@ -426,5 +449,10 @@ int main() {
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 40, "ROTATE X: %s", player_orientation->rotation.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 48, "ROTATE Y: %s", player_orientation->rotation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 56, "ROTATE Z: %s", player_orientation->rotation.z);
+
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 72, "NDC V1 X: %s", tri_ndc_1->x);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 80, "NDC V1 Y: %s", tri_ndc_1->y);
+    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 88, "NDC V1 Z: %s", tri_ndc_1->z);
+    */
   }
 }

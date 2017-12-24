@@ -869,24 +869,51 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
-	;; store the NDC coordinates of point 1 for debugging
+	;; If no point of the triangle is on screen, don't draw it.
 	movei	#_gpu_tri_point_1,r10
 	movei	#_tri_ndc_1,r11
 	load	(r10),r12	
 	load	(r11),r13
+	move	r12,r14
 	store	r12,(r13)
 	addq	#4,r10
 	addq	#4,r13
-	load	(r10),r12	
+	load	(r10),r12
+	move	r12,r15
 	store	r12,(r13)
 	addq	#4,r10
 	addq	#4,r13
-	load	(r10),r12	
+	load	(r10),r12
+	move	r12,r16
 	store	r12,(r13)
 
+	movei	#.advance_triangle,r30
+	movei	#$00020000,TEMP1 ; add 2 to make this always positive if the value is correct
+	add	TEMP1,r14
+	add	TEMP1,r15
+
+	movei	#$00010000,TEMP1
+	movei	#$00030000,TEMP2
+	
+	;; Skip this triangle unless 1 > p1.x < 3
+	cmp	r14,TEMP1
+	jump	hi,(r30)	; p1.x is out of range low
+	nop
+	cmp	r14,TEMP2	; cycle optimization
+	jump	mi,(r30)	; p1.x is out of range high
+	nop
+	
+	;; Skip this triangle unless 1 > p1.y < 3
+	cmp	r15,TEMP1
+	jump	hi,(r30)	; p1.x is out of range low
+	nop
+	cmp	r15,TEMP2	; cycle optimization
+	jump	mi,(r30)	; p1.x is out of range high
+	nop
+	
 	;; Skip this unless 1 >= p1.z < 2
 	movei	#.advance_triangle,r30
-	btst	#16,r12
+	btst	#16,r16
 	jump	eq,(r30)
 	nop
 

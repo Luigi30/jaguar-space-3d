@@ -135,7 +135,6 @@ void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX
 	Matrix44_Identity(mViewTranslate);
 	mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;
 	Matrix44_Multiply_Matrix44(mView, mViewTranslate, mView);
-	mView->data[3][3] = 0x00010000;	//TODO: fix this? why does this change when X does
 }
 
 void buildPerspectiveMatrix(Matrix44 *mPerspective)
