@@ -74,7 +74,8 @@ int main() {
   srand(8675309);
   jag_console_hide();
   
-  MMIO32(0x60000) = 0x00000000;
+  MMIO32(0x70010) = (uint32_t)&MODEL_cube_tri_list;
+  MMIO32(0x70020) = (uint32_t)cube_triangles;
   
   //BLIT_init_blitter();
   BLITTER_LOCK_CPU = false;
@@ -200,7 +201,8 @@ int main() {
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    cube_ptr->triangles = cube_triangles;
+//    cube_ptr->triangles = cube_triangles;
+    cube_ptr->triangles = MODEL_cube_tri_list;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
     sle->shape_Node.ln_Name = malloc(10);

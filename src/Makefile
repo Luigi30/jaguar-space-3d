@@ -6,7 +6,7 @@ BINPATH = $(ROOT)/bin/
 OBJPATH = $(ROOT)/obj/
 TOOLPATH= $(ROOT)/tools/
 
-OBJFILES = $(OBJPATH)main.o $(OBJPATH)utils/list.o $(OBJPATH)utils/list_functions.o $(OBJPATH)fixed.o $(OBJPATH)gfx/blit.o $(OBJPATH)mobj.o $(OBJPATH)images.o $(OBJPATH)gfx/palette.o $(OBJPATH)paldata.o $(OBJPATH)dsp.o $(OBJPATH)dsp_68k.o $(OBJPATH)dsp_matrix.o $(OBJPATH)matrix.o $(OBJPATH)linedraw.o $(OBJPATH)gpu.o $(OBJPATH)gpu_68k.o $(OBJPATH)matrix_68k.o $(OBJPATH)matrix_multiplication.o $(OBJPATH)sound_68k.o $(OBJPATH)cube.o $(OBJPATH)log.o $(OBJPATH)script.o
+OBJFILES = $(OBJPATH)main.o $(OBJPATH)utils/list.o $(OBJPATH)utils/list_functions.o $(OBJPATH)fixed.o $(OBJPATH)gfx/blit.o $(OBJPATH)mobj.o $(OBJPATH)images.o $(OBJPATH)gfx/palette.o $(OBJPATH)paldata.o $(OBJPATH)dsp.o $(OBJPATH)dsp_68k.o $(OBJPATH)dsp_matrix.o $(OBJPATH)matrix.o $(OBJPATH)linedraw.o $(OBJPATH)gpu.o $(OBJPATH)gpu_68k.o $(OBJPATH)matrix_68k.o $(OBJPATH)matrix_multiplication.o $(OBJPATH)sound_68k.o $(OBJPATH)cube.o $(OBJPATH)log.o $(OBJPATH)script.o $(OBJPATH)models/model_cube.o
 IMAGES = images/atarifont.s images/atarifont8x8.s
 
 UNAME := $(shell uname -a)
@@ -42,7 +42,10 @@ RMACFLAGS = -i$(JAGINCLUDE)
 
 .PHONY: clean
 
-all: build
+all: copy_models build
+
+copy_models:
+	cp ../scheme/*.asm models
 
 build:	$(IMAGES) $(OBJFILES)
 	cp ../../u235/dsp.obj ../obj/u235.obj
