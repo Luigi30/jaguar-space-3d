@@ -2,10 +2,6 @@
 (load "lib/format-srfi-28.scm") ; basic format
 (load "lib/format-srfi-48.scm") ; intermediate format
 
-(define MODEL-NAME "cube")
-(define MODEL-FILENAME (format "input/~a.obj" MODEL-NAME))
-(define OUTPUT-FILENAME (format "output/model_~a.asm" MODEL-NAME))
-
 ; Splits a string str on the character ch. Stolen from Snack Overflow.
 (define (str-split str ch)
   (let ((len (string-length str)))
@@ -21,6 +17,10 @@
       (split 0 0))))
 
 ;;; Reads in an .obj file.
+;(define MODEL-NAME (list-ref (cdr (command-line)) 0))
+;(define MODEL-FILENAME (format "input/~a.obj" MODEL-NAME))
+;(define OUTPUT-FILENAME (format "output/model_~a.asm" MODEL-NAME))
+
 (define load-raw-data (lambda (filename) (load-wavefront-obj filename)))
 (define load-wavefront-obj
   (lambda (filename)
@@ -42,8 +42,8 @@
 (define str-split-on-spaces (lambda (str) (str-split str (integer->char 32))))
 (define str-split-on-slashes (lambda (str) (str-split str #\/)))
 
-(define filter-list-for-vertices (filter line-is-vertex (load-raw-data MODEL-FILENAME)))
-(define filter-list-for-faces (filter line-is-face (load-raw-data MODEL-FILENAME)))
+(define filter-list-for-vertices (lambda (filename) (filter line-is-vertex (load-raw-data filename))))
+(define filter-list-for-faces (lambda (filename) (filter line-is-face (load-raw-data filename))))
 
 ;;; The file we read produces lists of strings. Turn these into numbers.
 (define convert-elements-to-numbers
@@ -57,25 +57,13 @@
 ;;; This is the model's triangle mesh.
 (define get-faces
   (lambda (element)
-     (map
-      (lambda (triangle)
-        (map
-	 (lambda (vertex)
-	   (string->number (car (str-split-on-slashes vertex))))
-	 triangle))
-      element)))
-
-;;; Filter out everything from the model file except for the vertices.
-(define vertex-list
-  (map
-   (lambda (element) (cdr (convert-elements-to-numbers (str-split-on-spaces element))))
-   filter-list-for-vertices))
-
-;;; Filter out everything from the model file except for the faces.
-(define face-list
-  (map
-   (lambda (element) (cdr (str-split-on-spaces element)))
-   filter-list-for-faces))
+    (map
+     (lambda (triangle)
+       (map
+	(lambda (vertex)
+	  (string->number (car (str-split-on-slashes vertex))))
+	triangle))
+     element)))
 
 ;;; Given a list of faces and a list of vertexes, produce the model's list of triangles.
 (define get-triangle-mesh
@@ -113,11 +101,11 @@
 
 ;;; Prints all points in the mesh as fixed-point numbers.
 (define print-coordinates-as-32-bit-fixed
-  (lambda (mesh)
+  (lambda (model-name model-mesh)
     (let ((triangle-index 0))
       (map
        (lambda (triangle)
-	 (display (format "MODEL_~a_triangle_~a:\n" MODEL-NAME triangle-index))
+	 (display (format "MODEL_~a_triangle_~a:\n" model-name triangle-index))
 	 (set! triangle-index (+ triangle-index 1))
 	 (map
 	  (lambda (vertex)
@@ -127,9 +115,7 @@
 	     vertex)
 	    (display (format "\n")))
 	  triangle))
-       mesh))))
-  
-(define model-mesh (get-triangle-mesh face-list vertex-list))
+       model-mesh))))
 
 (define model-write-header
   (lambda (name mesh)
@@ -144,34 +130,66 @@
     (display (format "\tXDEF _MODEL_~a_tri_list\n" name))))
 
 (define model-write-triangle-count
-  (lambda ()
-    (display (format "_MODEL_~a_tri_count:\n\tdc.l ~a\n\n" MODEL-NAME (length model-mesh)))))
+  (lambda (model-name model-mesh)
+    (display (format "_MODEL_~a_tri_count:\n\tdc.l ~a\n\n" model-name (length model-mesh)))))
      
 (define model-write-triangle-pointers
-  (lambda (model)
+  (lambda (model-name model-mesh)
     (let ((triangle-index 0))
       (map
        (lambda (triangle)
-	 (display (format "\tdc.l MODEL_~a_triangle_~a\n" MODEL-NAME triangle-index))
+	 (display (format "\tdc.l MODEL_~a_triangle_~a\n" model-name triangle-index))
 	 (set! triangle-index (+ triangle-index 1)))
-       model))))
+       model-mesh))))
 
-;;; Create the output file.
-(with-output-to-file
-    (list path: OUTPUT-FILENAME)
+;;; Filter out everything from the model file except for the vertices.
+(define get-vertex-list
+  (lambda (filename)
+    (map
+     (lambda (element) (cdr (convert-elements-to-numbers (str-split-on-spaces element))))
+     (filter-list-for-vertices filename))))
+
+;;; Filter out everything from the model file except for the faces.
+(define get-face-list
+  (lambda (filename)
+    (map
+     (lambda (element) (cdr (str-split-on-spaces element)))
+     (filter-list-for-faces filename))))
+
+(define write-converted-model
+  (lambda (model-name input-file output-file)
+    (with-output-to-file
+	(list path: output-file)
+      (lambda ()
+	(let ((MODEL-MESH (get-triangle-mesh (get-face-list input-file) (get-vertex-list input-file))))
+	  (model-write-header model-name MODEL-MESH)
+	  (model-write-xdefs model-name)
+	  (newline)
+	  (display "\teven\n")
+	  (model-write-triangle-count model-name MODEL-MESH)
+	  (display (format "_MODEL_~a:\n" model-name))
+	  (print-coordinates-as-32-bit-fixed model-name MODEL-MESH)
+	  (newline)
+	  (display (format "_MODEL_~a_tri_list:\n" model-name))
+	  (model-write-triangle-pointers model-name MODEL-MESH)
+	  (newline)
+	  )
+	)
+      )))
+
+(define do-model-conversion
   (lambda ()
-    (model-write-header MODEL-NAME model-mesh)
-    (model-write-xdefs MODEL-NAME)
-    (newline)
-    (display "\teven\n")
-    (model-write-triangle-count)
-    (display (format "_MODEL_~a:\n" MODEL-NAME))
-    (print-coordinates-as-32-bit-fixed model-mesh)
-    (newline)
-    (display (format "_MODEL_~a_tri_list:\n" MODEL-NAME))
-    (model-write-triangle-pointers model-mesh)
-    (newline)
-    )
-  ) 
+    (let ((MODEL-NAME (list-ref (cdr (command-line)) 0)))
+      (let ((MODEL-INPUT-FILENAME (format "input/~a.obj" MODEL-NAME))
+	    (MODEL-OUTPUT-FILENAME (format "output/model_~a.asm" MODEL-NAME)))
+	(write-converted-model MODEL-NAME MODEL-INPUT-FILENAME MODEL-OUTPUT-FILENAME)
+	(display (format "Model ~a converted to Motorola format include file ~a\n" MODEL-INPUT-FILENAME MODEL-OUTPUT-FILENAME)))
+  )))
 
-(display (format "Model ~a converted to Motorola-format include file ~a.\n" MODEL-FILENAME OUTPUT-FILENAME))
+(define (command-line-arguments)
+  (cdr (command-line)))
+
+(if (not (equal? (length (command-line-arguments)) 1))
+    (display (format "Usage: ~a model-filename\n" (car (command-line))))
+    (do-model-conversion)
+    )
