@@ -1,6 +1,6 @@
-(load "lib/srfi1.scm") ; filter
-(load "lib/format-srfi-28.scm") ; basic format
-(load "lib/format-srfi-48.scm") ; intermediate format
+(load (string-append (getenv "CONVERTER_LIB") "/lib/srfi1.scm")) ; filter
+(load (string-append (getenv "CONVERTER_LIB") "/lib/format-srfi-28.scm")) ; basic format
+(load (string-append (getenv "CONVERTER_LIB") "/lib/format-srfi-48.scm")) ; intermediate format
 
 ; Splits a string str on the character ch. Stolen from Snack Overflow.
 (define (str-split str ch)
