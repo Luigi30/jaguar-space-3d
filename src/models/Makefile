@@ -1,3 +1,5 @@
+ROOT = ../../
+OBJPATH = ../../obj
 CONVERTER_DIR = $(ROOT)/scheme
 
 MODELS = cube cube_two

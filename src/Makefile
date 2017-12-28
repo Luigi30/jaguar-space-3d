@@ -35,8 +35,6 @@ CONVERT = $(TOOLPATH)/converter.exe --target-dir images/
 all: models build
 
 models:
-	export OBJPATH=$(OBJPATH)
-	export ROOT=$(ROOT)
 	$(MAKE) -C ./models 
 
 build:	$(IMAGES) $(OBJFILES)
