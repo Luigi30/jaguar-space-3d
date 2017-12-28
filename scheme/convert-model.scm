@@ -1,6 +1,8 @@
-(load (string-append (getenv "CONVERTER_LIB") "/lib/srfi1.scm")) ; filter
-(load (string-append (getenv "CONVERTER_LIB") "/lib/format-srfi-28.scm")) ; basic format
-(load (string-append (getenv "CONVERTER_LIB") "/lib/format-srfi-48.scm")) ; intermediate format
+;;;TODO: the conversion to fixed-point numbers broke when I switched to spheres from SRFI
+
+(load (spheres/algorithm list))
+(load (spheres/string format))
+(load (spheres/string string))
 
 ; Splits a string str on the character ch. Stolen from Snack Overflow.
 (define (str-split str ch)
@@ -17,9 +19,6 @@
       (split 0 0))))
 
 ;;; Reads in an .obj file.
-;(define MODEL-NAME (list-ref (cdr (command-line)) 0))
-;(define MODEL-FILENAME (format "input/~a.obj" MODEL-NAME))
-;(define OUTPUT-FILENAME (format "output/model_~a.asm" MODEL-NAME))
 
 (define load-raw-data (lambda (filename) (load-wavefront-obj filename)))
 (define load-wavefront-obj
@@ -50,6 +49,11 @@
   (lambda (elements)
     (map
      (lambda (element)
+       (pretty-print element)
+       (if (string-contains element "\r")
+	   (begin
+	     (display "File is not in Unix format.")
+	     (exit)))
        (string->number element))
      elements)))
 
@@ -81,23 +85,9 @@
 ;;; TODO: bounds checking
 (define convert-number-to-32bit-fixed
   (lambda (number)
-  (bitwise-ior
-   (arithmetic-shift (inexact->exact (floor number)) 16)
-   (inexact->exact (* 65536 (- number (floor number)))))))
-
-;;; Converts all points in the mesh to the fixed-point format.
-(define convert-mesh-to-32bit-fixed
-  (lambda (mesh)
-    (map
-     (lambda (triangle)
-       (map
-	(lambda (vertex)
-	  (map
-	   (lambda (coordinate)
-	     (convert-number-to-32bit-fixed coordinate))
-	   vertex))
-	triangle))
-     mesh)))
+    (bitwise-ior
+     (arithmetic-shift (inexact->exact (floor number)) 16)
+     (inexact->exact (round (* 65536 (- number (floor number))))))))
 
 ;;; Prints all points in the mesh as fixed-point numbers.
 (define print-coordinates-as-32-bit-fixed
@@ -109,6 +99,7 @@
 	 (set! triangle-index (+ triangle-index 1))
 	 (map
 	  (lambda (vertex)
+	    (pretty-print vertex)
 	    (map
 	     (lambda (coordinate)
 	       (display (format "\tdc.l $~x\n" (convert-number-to-32bit-fixed coordinate))))
@@ -158,9 +149,9 @@
 
 (define write-converted-model
   (lambda (model-name input-file output-file)
-    (with-output-to-file
-	(list path: output-file)
-      (lambda ()
+;;;    (with-output-to-file
+;;;	(list path: output-file)
+;;;     (lambda ()
 	(let ((MODEL-MESH (get-triangle-mesh (get-face-list input-file) (get-vertex-list input-file))))
 	  (model-write-header model-name MODEL-MESH)
 	  (model-write-xdefs model-name)
@@ -175,13 +166,15 @@
 	  (newline)
 	  )
 	)
-      )))
+;;;      )))
+  )
 
 (define do-model-conversion
   (lambda ()
     (let ((MODEL-NAME (list-ref (cdr (command-line)) 0)))
       (let ((MODEL-INPUT-FILENAME (format "input/~a.obj" MODEL-NAME))
 	    (MODEL-OUTPUT-FILENAME (format "output/model_~a.asm" MODEL-NAME)))
+	(pretty-print (format "Converting model: ~a" MODEL-INPUT-FILENAME))
 	(write-converted-model MODEL-NAME MODEL-INPUT-FILENAME MODEL-OUTPUT-FILENAME)
 	(display (format "Model ~a converted to Motorola format include file ~a\n" MODEL-INPUT-FILENAME MODEL-OUTPUT-FILENAME)))
   )))
