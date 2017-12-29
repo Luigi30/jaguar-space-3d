@@ -1,8 +1,20 @@
+#! gsi -f
+
 ;;;TODO: the conversion to fixed-point numbers broke when I switched to spheres from SRFI
 
 (load (spheres/algorithm list))
 (load (spheres/string format))
 (load (spheres/string string))
+
+;;; Converts a Number to a signed fixed-point number.
+(define (number->parts num)
+  (let ((approximation (string->number (format+ "~0,10F" num))))
+  (cons (inexact->exact (floor approximation))
+	(- approximation (floor approximation)))))
+(define (parts->integer num)
+  (car num))
+(define (parts->fractional num)
+  (cdr num))
 
 ; Splits a string str on the character ch. Stolen from Snack Overflow.
 (define (str-split str ch)
@@ -49,7 +61,6 @@
   (lambda (elements)
     (map
      (lambda (element)
-       (pretty-print element)
        (if (string-contains element "\r")
 	   (begin
 	     (display "File is not in Unix format.")
@@ -81,13 +92,11 @@
 	triangle))
      (get-faces faces))))
 
-;;; Converts a Number to a signed 32-bit fixed-point number.
-;;; TODO: bounds checking
 (define convert-number-to-32bit-fixed
   (lambda (number)
     (bitwise-ior
-     (arithmetic-shift (inexact->exact (floor number)) 16)
-     (inexact->exact (round (* 65536 (- number (floor number))))))))
+     (arithmetic-shift (car (number->parts number)) 16)
+     (inexact->exact (round (* 65536 (cdr (number->parts number))))))))
 
 ;;; Prints all points in the mesh as fixed-point numbers.
 (define print-coordinates-as-32-bit-fixed
@@ -99,10 +108,9 @@
 	 (set! triangle-index (+ triangle-index 1))
 	 (map
 	  (lambda (vertex)
-	    (pretty-print vertex)
 	    (map
 	     (lambda (coordinate)
-	       (display (format "\tdc.l $~x\n" (convert-number-to-32bit-fixed coordinate))))
+	       (display (format+ "\tdc.l ~D\n" (convert-number-to-32bit-fixed coordinate))))
 	     vertex)
 	    (display (format "\n")))
 	  triangle))
@@ -131,8 +139,10 @@
        (lambda (triangle)
 	 (display (format "\tdc.l MODEL_~a_triangle_~a\n" model-name triangle-index))
 	 (set! triangle-index (+ triangle-index 1)))
-       model-mesh))))
-
+       model-mesh))
+    (display "\tdc.l 0") ;;;End the triangle list with a NULL.
+    ))
+    
 ;;; Filter out everything from the model file except for the vertices.
 (define get-vertex-list
   (lambda (filename)
@@ -149,9 +159,9 @@
 
 (define write-converted-model
   (lambda (model-name input-file output-file)
-;;;    (with-output-to-file
-;;;	(list path: output-file)
-;;;     (lambda ()
+    (with-output-to-file
+	(list path: output-file)
+      (lambda ()
 	(let ((MODEL-MESH (get-triangle-mesh (get-face-list input-file) (get-vertex-list input-file))))
 	  (model-write-header model-name MODEL-MESH)
 	  (model-write-xdefs model-name)
@@ -164,10 +174,7 @@
 	  (display (format "_MODEL_~a_tri_list:\n" model-name))
 	  (model-write-triangle-pointers model-name MODEL-MESH)
 	  (newline)
-	  )
-	)
-;;;      )))
-  )
+	  )))))
 
 (define do-model-conversion
   (lambda ()
@@ -177,7 +184,7 @@
 	(pretty-print (format "Converting model: ~a" MODEL-INPUT-FILENAME))
 	(write-converted-model MODEL-NAME MODEL-INPUT-FILENAME MODEL-OUTPUT-FILENAME)
 	(display (format "Model ~a converted to Motorola format include file ~a\n" MODEL-INPUT-FILENAME MODEL-OUTPUT-FILENAME)))
-  )))
+      )))
 
 (define (command-line-arguments)
   (cdr (command-line)))

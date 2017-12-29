@@ -58,6 +58,8 @@ void clear_video_buffer(uint8_t *buffer){
 }
 
 int main() {
+  EmuLog_String("main(): Begin space.\n");
+  
   //set correct endianness
   MMIO32(G_END) = 0x00070007;
 
@@ -68,14 +70,14 @@ int main() {
   DSP_LoadSoundEngine();
   DSP_StartSoundEngine();
   //DSP_PlayModule();
+
+  EmuLog_String("main(): DSP sound engine initialized\n");
   
   GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
+
   
   srand(8675309);
   jag_console_hide();
-  
-  MMIO32(0x70010) = (uint32_t)&MODEL_cube_tri_list;
-  MMIO32(0x70020) = (uint32_t)cube_triangles;
   
   //BLIT_init_blitter();
   BLITTER_LOCK_CPU = false;
@@ -97,6 +99,8 @@ int main() {
   for(int i=1;i<16;i++){
 	  jag_set_indexed_color(i, toRgb16((i*16)-1,(i*16)-1,(i*16)-1));
   }
+
+  EmuLog_String("main(): Palette initialized.\n");
 
   BLIT_8x8_text_string(text_buffer, 32, 16, "                   ");
 
@@ -129,8 +133,6 @@ int main() {
     mobj_font.graphic->p1.trans  = 1;				/* makes color 0 transparent */
     mobj_font.graphic->p1.index  = 127;
   }
-
-  skunkCONSOLEWRITE("font layer initialized\n");
 
   /* Sprite layer */
   {
@@ -182,26 +184,24 @@ int main() {
     mobj_background.graphic->p1.index  = 0;
   }
 
-  skunkCONSOLEWRITE("background layer initialized\n");
+  EmuLog_String("Graphic layers initialized\n");
 
   //Start the list here.
   jag_attach_olp(mobj_background.graphic);
-
-  skunkCONSOLEWRITE("object list attached\n");
 		
   uint32_t stick0, stick0_lastread;
   uint16_t framecounter = 0;
   uint32_t framenumber = 0;
 
+  EmuLog_String("main(): Constructing scene\n");
   NewList((struct List *)scene_Shapes);
 
-  //Init cube
+  /* Shapes. */
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-//    cube_ptr->triangles = cube_triangles;
     cube_ptr->triangles = MODEL_cube_tri_list;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
@@ -210,7 +210,22 @@ int main() {
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
 
- {
+  /*
+  {
+    Shape *sphere_ptr = calloc(1, sizeof(Shape));
+    sphere_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    sphere_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    sphere_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+    sphere_ptr->triangles = MODEL_sphere_tri_list;
+    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
+    sle->shape_Data = sphere_ptr;
+    sle->shape_Node.ln_Name = malloc(10);
+    strcpy(sle->shape_Node.ln_Name, "SPHERE");
+    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
+  }
+  */
+
+  {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(5) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
@@ -223,6 +238,8 @@ int main() {
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
 
+  EmuLog_String("main(): initializing transformation matrix\n");
+ 
   //Init transformation matrix
   m = calloc(1, sizeof(Matrix44));
   mTranslation = calloc(1, sizeof(Matrix44));
@@ -231,8 +248,6 @@ int main() {
 
   mPerspective = calloc(1, sizeof(Matrix44));
   buildPerspectiveMatrix(mPerspective);
-
-  skunkCONSOLEWRITE("Entering main loop.\n");
 
   //Init Matrix44_VectorProduct
   mvp_vector = calloc(1, sizeof(Vector3FX));
@@ -249,12 +264,10 @@ int main() {
   VIEW_CENTER   = (Vector3FX){ 0x00000000, 0x00000000, 0x00000000 };
   VIEW_UP 	= (Vector3FX){ 0x00000000, 0x00010000, 0x00000000 };
 
-  int r = LISP_eval("(+ 1 1)");
-  sprintf(skunkoutput, "result: %d", r);
-  EmuLog_String(skunkoutput);
-
   Matrix44 *player_mForward = calloc(1, sizeof(Matrix44));
   Matrix44 *player_mRight = calloc(1, sizeof(Matrix44));
+
+  EmuLog_String("main(): entering frame loop\n");
   
   while(true) {
 	  
@@ -280,6 +293,8 @@ int main() {
     GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
     ShapeListEntry *player = (ShapeListEntry *)FindName(scene_Shapes, "PLAYER");
     Shape *player_orientation = player->shape_Data;
+
+    EmuLog_String("main(): building view\n");
     VIEW_EYE = player->shape_Data->translation;
 
     //The center point is 1 unit forward from the translation.
@@ -299,6 +314,7 @@ int main() {
     r.y = FIXED_MUL(player_mRight->data[1][0], RIGHT.x) + FIXED_MUL(player_mRight->data[1][1], RIGHT.y) + FIXED_MUL(player_mRight->data[1][2], RIGHT.z);
     r.z = FIXED_MUL(player_mRight->data[2][0], RIGHT.x) + FIXED_MUL(player_mRight->data[2][1], RIGHT.y) + FIXED_MUL(player_mRight->data[2][2], RIGHT.z);
 
+    EmuLog_String("main(): f and r vectors built\n");
 
     /*
     sprintf(skunkoutput, "Player rotation is %08X %08X %08X\n", player_orientation->rotation.x, player_orientation->rotation.y, player_orientation->rotation.z);
@@ -318,17 +334,17 @@ int main() {
     */
     
     VIEW_CENTER = player->shape_Data->translation;
-    //VIEW_CENTER.z -= 0x00010000;
     VIEW_CENTER.x += f.x;
     VIEW_CENTER.y += f.y;
     VIEW_CENTER.z += f.z;
     
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
+    EmuLog_String("main(): view matrix built\n");
 
     Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
-    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
-    cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
-    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+    //cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    //cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
+    //cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -420,8 +436,13 @@ int main() {
 	  
     stick0_lastread = stick0;
 
+    EmuLog_String("running draw loop\n");
+
     for(ShapeListEntry *entry = (ShapeListEntry *)scene_Shapes->lh_Head; entry->shape_Node.ln_Succ != NULL; entry = (ShapeListEntry *)entry->shape_Node.ln_Succ)
       {
+	sprintf(skunkoutput, "drawing shape %s\n", entry->shape_Node.ln_Name);
+	EmuLog_String(skunkoutput);
+	
 	if(strcmp(entry->shape_Node.ln_Name, "PLAYER") == 0)
 	  continue; //Don't render the player object.
 	
@@ -439,11 +460,8 @@ int main() {
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
-
-	//while(true) {};
       }
 
-    /*
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 8,  "TRANS  X: %s", player_orientation->translation.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 16, "TRANS  Y: %s", player_orientation->translation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 24, "TRANS  Z: %s", player_orientation->translation.z);
@@ -452,9 +470,5 @@ int main() {
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 48, "ROTATE Y: %s", player_orientation->rotation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 56, "ROTATE Z: %s", player_orientation->rotation.z);
 
-    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 72, "NDC V1 X: %s", tri_ndc_1->x);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 80, "NDC V1 Y: %s", tri_ndc_1->y);
-    FIXED_PRINT_TO_BUFFER(text_buffer, 8, 88, "NDC V1 Z: %s", tri_ndc_1->z);
-    */
   }
 }

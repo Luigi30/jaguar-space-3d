@@ -1,4 +1,5 @@
 #include "fixed.h"
+#include "log.h"
 
 char fx_temp_out[32];
 
@@ -37,7 +38,7 @@ FIXED_32 FIXED_MUL(FIXED_32 a, FIXED_32 b)
 FIXED_32 FIXED_DIV(const FIXED_32 a, const FIXED_32 b)
 {
 	if(b == 0){
-		skunkCONSOLEWRITE("FIXED_DIV by 0!\n");
+	        EmuLog_String("FIXED_DIV by 0!\n");
 	}
 	
 	uint64_t result;
@@ -128,16 +129,20 @@ FIXED_32 FIXED_SQRT(FIXED_32 val)
 
 Vector3FX Vector3FX_Normalize(Vector3FX v)
 {
-	//Calculate magnitude.
-	FIXED_32 magnitude = FIXED_SQRT((FIXED_MUL(v.x, v.x) + FIXED_MUL(v.y, v.y) + FIXED_MUL(v.z, v.z)));
-	MMIO32(0x60010) = magnitude;
+  char str[128];
+  sprintf(str, "Vector3FX_Normalize: Normalizing vector %08X %08X %08X\n", v.x, v.y, v.z);
+  EmuLog_String(str);
+  
+  //Calculate magnitude.
+  FIXED_32 magnitude = FIXED_SQRT((FIXED_MUL(v.x, v.x) + FIXED_MUL(v.y, v.y) + FIXED_MUL(v.z, v.z)));
+  MMIO32(0x60010) = magnitude;
 	
-	FIXED_32 x = FIXED_DIV(v.x, FIXED_ABS(magnitude));
-	FIXED_32 y = FIXED_DIV(v.y, FIXED_ABS(magnitude));
-	FIXED_32 z = FIXED_DIV(v.z, FIXED_ABS(magnitude));
+  FIXED_32 x = FIXED_DIV(v.x, FIXED_ABS(magnitude));
+  FIXED_32 y = FIXED_DIV(v.y, FIXED_ABS(magnitude));
+  FIXED_32 z = FIXED_DIV(v.z, FIXED_ABS(magnitude));
 
-	Vector3FX result = { x, y, z };
-	return result;
+  Vector3FX result = { x, y, z };
+  return result;
 }
 
 Vector3FX Vector3FX_CrossProduct(Vector3FX a, Vector3FX b)

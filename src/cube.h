@@ -21,7 +21,14 @@ static Vector3FX triangle12[3]= { VERTEX_CREATE( 1, 1, -1), VERTEX_CREATE(-1, 1,
 
 //This will stop when we hit a NULL.
 extern Vector3FX *cube_triangles[64];
+
 extern Vector3FX **MODEL_cube;
 extern Vector3FX **MODEL_cube_tri_list;
+
+extern Vector3FX **MODEL_sphere;
+extern Vector3FX **MODEL_sphere_tri_list;
+
+extern Vector3FX **MODEL_cone;
+extern Vector3FX **MODEL_cone_tri_list;
 
 #endif

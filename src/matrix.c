@@ -119,22 +119,25 @@ void Matrix44_VectorProduct(Matrix44 *matrix, Vector3FX *vector, Vector4FX *dest
 //TODO: Find a better place for this.
 void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX UP)
 {
-	Vector3FX F  = { CENTER.x - EYE.x, CENTER.y - EYE.y, CENTER.z - EYE.z }; //Center of screen
-	
-	Vector3FX f = Vector3FX_Normalize(F);
-	Vector3FX up_normalized = Vector3FX_Normalize(UP);
-	Vector3FX s = Vector3FX_CrossProduct(f, up_normalized);
-	Vector3FX s_normalized = Vector3FX_Normalize(s);
-	Vector3FX u = Vector3FX_CrossProduct(s_normalized, f);
+  EmuLog_String("buildViewMatrix\n");
+  Vector3FX F  = { CENTER.x - EYE.x, CENTER.y - EYE.y, CENTER.z - EYE.z }; //Center of screen
 
-	mView->data[0][0] = s.x; mView->data[0][1] = s.y; mView->data[0][2] = s.z; mView->data[0][3] = 0;
-	mView->data[1][0] = u.x; mView->data[1][1] = u.y; mView->data[1][2] = u.z; mView->data[1][3] = 0;
-	mView->data[2][0] = -f.x; mView->data[2][1] = -f.y; mView->data[2][2] = -f.z; mView->data[2][3] = 0;
-	mView->data[3][0] = 0; mView->data[3][1] = 0; mView->data[3][2] = 0; mView->data[3][3] = 0x00010000;
-	
-	Matrix44_Identity(mViewTranslate);
-	mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;
-	Matrix44_Multiply_Matrix44(mView, mViewTranslate, mView);
+  Vector3FX f = Vector3FX_Normalize(F);
+  Vector3FX up_normalized = Vector3FX_Normalize(UP);
+  Vector3FX s = Vector3FX_CrossProduct(f, up_normalized);
+  Vector3FX s_normalized = Vector3FX_Normalize(s);
+  Vector3FX u = Vector3FX_CrossProduct(s_normalized, f);
+
+  mView->data[0][0] = s.x; mView->data[0][1] = s.y; mView->data[0][2] = s.z; mView->data[0][3] = 0;
+  mView->data[1][0] = u.x; mView->data[1][1] = u.y; mView->data[1][2] = u.z; mView->data[1][3] = 0;
+  mView->data[2][0] = -f.x; mView->data[2][1] = -f.y; mView->data[2][2] = -f.z; mView->data[2][3] = 0;
+  mView->data[3][0] = 0; mView->data[3][1] = 0; mView->data[3][2] = 0; mView->data[3][3] = 0x00010000;
+
+  EmuLog_String("ok, mView is set\n");
+  Matrix44_Identity(mViewTranslate);
+  mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;
+  EmuLog_String("about to multiply mView * mViewTranslate...\n");
+  Matrix44_Multiply_Matrix44(mView, mViewTranslate, mView);
 }
 
 void buildPerspectiveMatrix(Matrix44 *mPerspective)
