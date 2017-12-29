@@ -119,7 +119,6 @@ void Matrix44_VectorProduct(Matrix44 *matrix, Vector3FX *vector, Vector4FX *dest
 //TODO: Find a better place for this.
 void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX UP)
 {
-  EmuLog_String("buildViewMatrix\n");
   Vector3FX F  = { CENTER.x - EYE.x, CENTER.y - EYE.y, CENTER.z - EYE.z }; //Center of screen
 
   Vector3FX f = Vector3FX_Normalize(F);
@@ -133,25 +132,23 @@ void buildViewMatrix(Matrix44 *mView, Vector3FX EYE, Vector3FX CENTER, Vector3FX
   mView->data[2][0] = -f.x; mView->data[2][1] = -f.y; mView->data[2][2] = -f.z; mView->data[2][3] = 0;
   mView->data[3][0] = 0; mView->data[3][1] = 0; mView->data[3][2] = 0; mView->data[3][3] = 0x00010000;
 
-  EmuLog_String("ok, mView is set\n");
   Matrix44_Identity(mViewTranslate);
   mViewTranslate->data[0][3] = -EYE.x; mViewTranslate->data[1][3] = -EYE.y; mViewTranslate->data[2][3] = -EYE.z;
-  EmuLog_String("about to multiply mView * mViewTranslate...\n");
   Matrix44_Multiply_Matrix44(mView, mViewTranslate, mView);
 }
 
 void buildPerspectiveMatrix(Matrix44 *mPerspective)
 {
-	Matrix44_Identity(mPerspective);
+  Matrix44_Identity(mPerspective);
 
-	FIXED_32 NEAR_CLIP 	= 0x00010000; // 1.0
-	FIXED_32 FAR_CLIP 	= 0x00640000; // 100.0
-	FIXED_32 f = 0x000191D4; // cot(65 degrees/2) = 1.56968
+  FIXED_32 NEAR_CLIP 	= 0x00010000; // 1.0
+  FIXED_32 FAR_CLIP 	= 0x00640000; // 100.0
+  FIXED_32 f = 0x000191D4; // cot(65 degrees/2) = 1.56968
 
-	mPerspective->data[0][0] = 0x0000FB25; // (f / 1.6) = 0.98105
-	mPerspective->data[1][1] = f;
-	mPerspective->data[2][2] = FIXED_DIV(FAR_CLIP, (FAR_CLIP-NEAR_CLIP));
-	mPerspective->data[2][3] = -FIXED_DIV(FIXED_MUL(NEAR_CLIP, FAR_CLIP), FAR_CLIP-NEAR_CLIP);
-	mPerspective->data[3][2] = 0x00010000;
-	mPerspective->data[3][3] = 0;
+  mPerspective->data[0][0] = 0x0000FB25; // (f / 1.6) = 0.98105
+  mPerspective->data[1][1] = f;
+  mPerspective->data[2][2] = FIXED_DIV(FAR_CLIP, (FAR_CLIP-NEAR_CLIP));
+  mPerspective->data[2][3] = -FIXED_DIV(FIXED_MUL(NEAR_CLIP, FAR_CLIP), FAR_CLIP-NEAR_CLIP);
+  mPerspective->data[3][2] = 0x00010000;
+  mPerspective->data[3][3] = 0;
 }

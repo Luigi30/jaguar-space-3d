@@ -198,34 +198,44 @@ int main() {
 
   /* Shapes. */
   {
-    Shape *cube_ptr = calloc(1, sizeof(Shape));
-    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-    cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    //cube_ptr->triangles = MODEL_cube_tri_list;
-    cube_ptr->triangles = &MODEL_cone_tri_list;
-    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
-    sle->shape_Data = cube_ptr;
-    sle->shape_Node.ln_Name = malloc(10);
-    strcpy(sle->shape_Node.ln_Name, "CUBE");
-    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
-  }
-
-  /*
-  {
     Shape *sphere_ptr = calloc(1, sizeof(Shape));
     sphere_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     sphere_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     sphere_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    sphere_ptr->triangles = MODEL_sphere_tri_list;
+    sphere_ptr->triangles = &MODEL_sphere_tri_list;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = sphere_ptr;
     sle->shape_Node.ln_Name = malloc(10);
     strcpy(sle->shape_Node.ln_Name, "SPHERE");
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
   }
-  */
 
+  {
+    Shape *cone_ptr = calloc(1, sizeof(Shape));
+    cone_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(2), .y = INT_TO_FIXED(2), .z = INT_TO_FIXED(0) };
+    cone_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cone_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+    cone_ptr->triangles = &MODEL_cone_tri_list;
+    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
+    sle->shape_Data = cone_ptr;
+    sle->shape_Node.ln_Name = malloc(10);
+    strcpy(sle->shape_Node.ln_Name, "CONE");
+    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
+  }
+
+  {
+    Shape *cube_ptr = calloc(1, sizeof(Shape));
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(-2), .y = INT_TO_FIXED(-2), .z = INT_TO_FIXED(0) };
+    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+    cube_ptr->triangles = &MODEL_cube_tri_list;
+    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
+    sle->shape_Data = cube_ptr;
+    sle->shape_Node.ln_Name = malloc(10);
+    strcpy(sle->shape_Node.ln_Name, "CUBE");
+    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
+  }
+  
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(5) };
@@ -340,12 +350,16 @@ int main() {
     VIEW_CENTER.z += f.z;
     
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
-    EmuLog_String("main(): view matrix built\n");
 
     Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
-    //cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
-    //cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
-    //cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
+    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+
+    Shape *cone = ((ShapeListEntry *)FindName(scene_Shapes, "CONE"))->shape_Data;
+    cone->rotation.x = (cone->rotation.x + 0x00010000) % 0x01680000;
+    cone->rotation.y = (cone->rotation.y + 0x00010000) % 0x01680000;
+    cone->rotation.z = (cone->rotation.z + 0x00010000) % 0x01680000;
     
     framecounter = (framecounter + 1) % 60;
 
@@ -437,13 +451,8 @@ int main() {
 	  
     stick0_lastread = stick0;
 
-    EmuLog_String("running draw loop\n");
-
     for(ShapeListEntry *entry = (ShapeListEntry *)scene_Shapes->lh_Head; entry->shape_Node.ln_Succ != NULL; entry = (ShapeListEntry *)entry->shape_Node.ln_Succ)
-      {
-	sprintf(skunkoutput, "drawing shape %s\n", entry->shape_Node.ln_Name);
-	EmuLog_String(skunkoutput);
-	
+      {	
 	if(strcmp(entry->shape_Node.ln_Name, "PLAYER") == 0)
 	  continue; //Don't render the player object.
 	
@@ -461,10 +470,9 @@ int main() {
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
-
-	//while (true) {};
       }
 
+    /*
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 8,  "TRANS  X: %s", player_orientation->translation.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 16, "TRANS  Y: %s", player_orientation->translation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 24, "TRANS  Z: %s", player_orientation->translation.z);
@@ -472,5 +480,6 @@ int main() {
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 40, "ROTATE X: %s", player_orientation->rotation.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 48, "ROTATE Y: %s", player_orientation->rotation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 56, "ROTATE Z: %s", player_orientation->rotation.z);
+    */
   }
 }

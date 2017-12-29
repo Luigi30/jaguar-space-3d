@@ -644,6 +644,7 @@ _do_fill_flatbottom_polygon:
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
+	sub	r10,POLYFILL_SCANLINE_END
 
 	movei	#_tri_slope1,TEMP1
 	movei	#_tri_slope2,TEMP2
