@@ -2,7 +2,7 @@ ROOT = ../../
 OBJPATH = ../../obj
 CONVERTER_DIR = $(ROOT)/scheme
 
-MODELS = cube sphere cone
+MODELS = cube sphere cone cube_resized
 MODEL_OBJECTS = $(foreach model,$(MODELS),$(OBJPATH)/models/model_$(model).o)
 MODEL_ASMS = $(foreach model,$(MODELS),./output/model_$(model).asm)
 

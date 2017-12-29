@@ -501,7 +501,8 @@ _polyfill_blit_registers_setup:
 	PushReg	r17
 
 	movei	#_gpu_tri_facing_ratio,TEMP1	
-	load	(TEMP1),r17
+	load	(TEMP1),r17     ; DEBUG: comment me to disable lighting
+*	movei	#$0000FFFF,r17	; DEBUG: uncomment me to disable lighting
 	
 	shrq	#12,r17		; shift out all but the high nybble of the ratio.
 	sat8	r17
@@ -853,7 +854,7 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	movei	#_gpu_mvp_result_ptr,TEMP2
 	store	TEMP1,(TEMP2)
-
+	
 	GPU_JSR	_gpu_matrix_vector_product
 
 .perspective_divide:
@@ -1163,7 +1164,7 @@ _gpu_project_and_draw_triangle::
 	load	(r4),r5
 	movei	#.triangle_loop,r3
 	cmpq	#0,r5	; if the next triangle is a null pointer, we're done
-	jump	ne,(r3)
+	jump	ne,(r3)	; DEBUG: comment me out to only draw one triangle
 	nop
 	
 	StopGPU

@@ -202,7 +202,8 @@ int main() {
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    cube_ptr->triangles = MODEL_cube_tri_list;
+    //cube_ptr->triangles = MODEL_cube_tri_list;
+    cube_ptr->triangles = &MODEL_cone_tri_list;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
     sle->shape_Node.ln_Name = malloc(10);
@@ -460,6 +461,8 @@ int main() {
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
+
+	//while (true) {};
       }
 
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 8,  "TRANS  X: %s", player_orientation->translation.x);
@@ -469,6 +472,5 @@ int main() {
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 40, "ROTATE X: %s", player_orientation->rotation.x);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 48, "ROTATE Y: %s", player_orientation->rotation.y);
     FIXED_PRINT_TO_BUFFER(text_buffer, 8, 56, "ROTATE Z: %s", player_orientation->rotation.z);
-
   }
 }

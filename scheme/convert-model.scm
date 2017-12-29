@@ -1,7 +1,5 @@
 #! gsi -f
 
-;;;TODO: the conversion to fixed-point numbers broke when I switched to spheres from SRFI
-
 (load (spheres/algorithm list))
 (load (spheres/string format))
 (load (spheres/string string))
