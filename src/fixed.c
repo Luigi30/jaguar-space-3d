@@ -128,11 +128,7 @@ FIXED_32 FIXED_SQRT(FIXED_32 val)
 }
 
 Vector3FX Vector3FX_Normalize(Vector3FX v)
-{
-  char str[128];
-  sprintf(str, "Vector3FX_Normalize: Normalizing vector %08X %08X %08X\n", v.x, v.y, v.z);
-  EmuLog_String(str);
-  
+{ 
   //Calculate magnitude.
   FIXED_32 magnitude = FIXED_SQRT((FIXED_MUL(v.x, v.x) + FIXED_MUL(v.y, v.y) + FIXED_MUL(v.z, v.z)));
   MMIO32(0x60010) = magnitude;

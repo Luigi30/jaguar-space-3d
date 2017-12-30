@@ -198,34 +198,8 @@ int main() {
 
   /* Shapes. */
   {
-    Shape *sphere_ptr = calloc(1, sizeof(Shape));
-    sphere_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-    sphere_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-    sphere_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    sphere_ptr->triangles = &MODEL_sphere_tri_list;
-    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
-    sle->shape_Data = sphere_ptr;
-    sle->shape_Node.ln_Name = malloc(10);
-    strcpy(sle->shape_Node.ln_Name, "SPHERE");
-    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
-  }
-
-  {
-    Shape *cone_ptr = calloc(1, sizeof(Shape));
-    cone_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(2), .y = INT_TO_FIXED(2), .z = INT_TO_FIXED(0) };
-    cone_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
-    cone_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    cone_ptr->triangles = &MODEL_cone_tri_list;
-    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
-    sle->shape_Data = cone_ptr;
-    sle->shape_Node.ln_Name = malloc(10);
-    strcpy(sle->shape_Node.ln_Name, "CONE");
-    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
-  }
-
-  {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
-    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(-2), .y = INT_TO_FIXED(-2), .z = INT_TO_FIXED(0) };
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
     cube_ptr->triangles = &MODEL_cube_tri_list;
@@ -278,6 +252,9 @@ int main() {
   Matrix44 *player_mForward = calloc(1, sizeof(Matrix44));
   Matrix44 *player_mRight = calloc(1, sizeof(Matrix44));
 
+  Vector3FX FORWARD = (Vector3FX){0, 0, 0xFFFF0000};
+  Vector3FX RIGHT = (Vector3FX){0x00010000, 0, 0};
+
   EmuLog_String("main(): entering frame loop\n");
   
   while(true) {
@@ -305,12 +282,8 @@ int main() {
     ShapeListEntry *player = (ShapeListEntry *)FindName(scene_Shapes, "PLAYER");
     Shape *player_orientation = player->shape_Data;
 
-    EmuLog_String("main(): building view\n");
     VIEW_EYE = player->shape_Data->translation;
 
-    //The center point is 1 unit forward from the translation.
-    Vector3FX FORWARD = (Vector3FX){0, 0, 0xFFFF0000};
-    Vector3FX RIGHT = (Vector3FX){0x00010000, 0, 0};
     //Rotate this vector by the player's rotation to produce the local FORWARD and RIGHT vectors.
     Matrix44_Rotation(player_orientation->rotation, player_mForward);
     Matrix44_Rotation(player_orientation->rotation, player_mRight);
@@ -324,8 +297,6 @@ int main() {
     r.x = FIXED_MUL(player_mRight->data[0][0], RIGHT.x) + FIXED_MUL(player_mRight->data[0][1], RIGHT.y) + FIXED_MUL(player_mRight->data[0][2], RIGHT.z);
     r.y = FIXED_MUL(player_mRight->data[1][0], RIGHT.x) + FIXED_MUL(player_mRight->data[1][1], RIGHT.y) + FIXED_MUL(player_mRight->data[1][2], RIGHT.z);
     r.z = FIXED_MUL(player_mRight->data[2][0], RIGHT.x) + FIXED_MUL(player_mRight->data[2][1], RIGHT.y) + FIXED_MUL(player_mRight->data[2][2], RIGHT.z);
-
-    EmuLog_String("main(): f and r vectors built\n");
 
     /*
     sprintf(skunkoutput, "Player rotation is %08X %08X %08X\n", player_orientation->rotation.x, player_orientation->rotation.y, player_orientation->rotation.z);
@@ -356,11 +327,6 @@ int main() {
     cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
     cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
 
-    Shape *cone = ((ShapeListEntry *)FindName(scene_Shapes, "CONE"))->shape_Data;
-    cone->rotation.x = (cone->rotation.x + 0x00010000) % 0x01680000;
-    cone->rotation.y = (cone->rotation.y + 0x00010000) % 0x01680000;
-    cone->rotation.z = (cone->rotation.z + 0x00010000) % 0x01680000;
-    
     framecounter = (framecounter + 1) % 60;
 
     if((framecounter % 60) == 0)

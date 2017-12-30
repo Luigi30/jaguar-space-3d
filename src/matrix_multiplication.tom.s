@@ -781,19 +781,21 @@ _gpu_build_transformation_matrix::
 	movei	#_M_MultRight,r28
 	movei	#_M_MultResult,r29
 
-	;; Calculate mModel
+	;; Calculate mModel - creates a local transformation for the points of the model.
+	;; identity matrix * mTranslation
 	movei	#_mModel,TEMP1
-	movei	#_mRotation,TEMP2
+	movei	#_mTranslation,TEMP2
 	load	(TEMP1),TEMP1
 	load	(TEMP2),TEMP2
 	store	TEMP1,(r27)
 	store	TEMP2,(r28)
 	movei	#_gpu_pc_result_storage,TEMP1
 	store	TEMP1,(r29)
-	GPU_JSR	#_gpu_matrix_multiply_jsr_entry
+	GPU_JSR	#_gpu_matrix_multiply_jsr_entry		
 
-	movei	#_gpu_pc_result_ptr,TEMP1
-	movei	#_mTranslation,TEMP2
+	; intermediate product * mRotation
+	movei	#_gpu_pc_result_ptr,TEMP1 
+	movei	#_mRotation,TEMP2
 	load	(TEMP1),TEMP1
 	load	(TEMP2),TEMP2
 	store	TEMP1,(r27)

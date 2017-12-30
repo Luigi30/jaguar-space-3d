@@ -580,6 +580,14 @@ _do_fill_flattop_polygon:
 
 .reorder:
 	cmp	r15,r16
+	jr	ne,.notsame	; make sure x1 != x2
+	nop
+	movei	#.advance_scanline,TEMP1 ; x1 == x2. don't draw anything
+	jump	t,(TEMP1)
+	nop
+
+.notsame:
+	cmp	r15,r16
 	jr	hi,.go
 
 	move	r16,TEMP1
@@ -602,7 +610,7 @@ _do_fill_flattop_polygon:
 	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
 
-.next_loop:
+.advance_scanline:
 	movei	#$00010000,r11
 	sub	r11,POLYFILL_SCANLINE_CUR
 
@@ -644,7 +652,6 @@ _do_fill_flatbottom_polygon:
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
-	sub	r10,POLYFILL_SCANLINE_END
 
 	movei	#_tri_slope1,TEMP1
 	movei	#_tri_slope2,TEMP2
@@ -675,7 +682,9 @@ _do_fill_flatbottom_polygon:
 	cmp	r15,r16
 	jr	ne,.notsame	; make sure x1 != x2
 	nop
-	addq	#1,r16
+	movei	#.advance_scanline,TEMP1 ; x1 == x2. don't draw anything
+	jump	t,(TEMP1)
+	nop
 	
 .notsame:
 	cmp	r15,r16
@@ -695,13 +704,13 @@ _do_fill_flatbottom_polygon:
 	move 	r16,TEMP1
 	sub	r15,TEMP1
 	bset	#16,TEMP1
-	bset	#0,TEMP1
 	store	TEMP1,(B_B_COUNT)
 	move	TEMP1,r12
 	
 	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
-	
+
+.advance_scanline:
 	movei	#$00010000,r11
 	add	r11,POLYFILL_SCANLINE_CUR
 
@@ -820,7 +829,7 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_mvp_matrix_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 
-	movei	#_ptr_current_triangle,TEMP1	;ptr to the first triangle's coords
+	movei	#_ptr_current_triangle,TEMP1	;ptr to the first point's coords
 	load	(TEMP1),TEMP1
 	movei	#_gpu_mvp_vector_ptr,TEMP2
 	store	TEMP1,(TEMP2)
@@ -832,9 +841,9 @@ _gpu_project_and_draw_triangle::
 	GPU_JSR	_gpu_matrix_vector_product
 
 .triangle2:
-	movei	#_ptr_current_triangle,TEMP1	;ptr to the first triangle's coords
+	movei	#_ptr_current_triangle,TEMP1	;ptr to the first point's coords
 	load	(TEMP1),TEMP1
-	addq	#12,TEMP1	;advance to triangle #2
+	addq	#12,TEMP1	;advance to point #2
 	movei	#_gpu_mvp_vector_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 	
@@ -845,10 +854,10 @@ _gpu_project_and_draw_triangle::
 	GPU_JSR	_gpu_matrix_vector_product
 
 .triangle3:
-	movei	#_ptr_current_triangle,TEMP1	;ptr to the first triangle's coords
+	movei	#_ptr_current_triangle,TEMP1	;ptr to the first point's coords
 	load	(TEMP1),TEMP1
-	addq	#12,TEMP1	;advance to triangle #2
-	addq	#12,TEMP1	;advance to triangle #3
+	addq	#12,TEMP1	;advance to point #2
+	addq	#12,TEMP1	;advance to point  #3
 	movei	#_gpu_mvp_vector_ptr,TEMP2
 	store	TEMP1,(TEMP2)
 	
@@ -871,7 +880,9 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
-	;; If no point of the triangle is on screen, don't draw it.
+	;; If no point of the triangle is on screen, skip to the next triangle.
+	GPU_JSR	_gpu_any_visible_points
+	
 	movei	#_gpu_tri_point_1,r10
 	movei	#_tri_ndc_1,r11
 	load	(r10),r12	
@@ -1170,6 +1181,14 @@ _gpu_project_and_draw_triangle::
 	
 	StopGPU
 	nop
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Are any points of the triangle in the drawing area?
+_gpu_any_visible_points:
+	
+	
+	GPU_RTS
+	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; Perspective divide function.

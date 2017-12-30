@@ -33,7 +33,7 @@ extern void DSP_PlayModule();
 
 typedef struct shape_t {
   Vector3FX translation, rotation, scale;
-  Vector3FX **triangles;	//Pointer to the triangles array of the shape.
+  Vector3FX *triangles;	//Pointer to a triangle array
 } Shape;
 
 typedef struct shape_list_entry_t {
