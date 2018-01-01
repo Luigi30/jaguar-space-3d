@@ -41,9 +41,6 @@
 	.phrase
 FIXED_PRODUCT:
 	GPU_REG_BANK_0
-	nop
-	nop
-	nop
 			
 	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
 	;; Result is returned in r5.	
@@ -118,19 +115,10 @@ FIXED_PRODUCT:
 
 .accumulate:
 	add     FP_STEP4_OPERAND_2,FIXED_PRODUCT_RESULT
-	nop
-	nop
-	nop
 
 .done:
 	GPU_REG_BANK_1
-	nop
-	nop
-	nop
 	movefa    FIXED_PRODUCT_RESULT,r5
-	nop
-	nop
-	nop
 	GPU_RTS
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

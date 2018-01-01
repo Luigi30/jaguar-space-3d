@@ -75,21 +75,6 @@ _blit_triangle_program_start::
 	.org $F03000
 
 _blit_wireframe_triangle::
-	GPU_REG_BANK_1
-	movei	#stack_bank_1_end,SP
-	
-setup_blit:
-	
-	GPU_REG_BANK_0
-	GPU_RTS
-
-;;; ;;;;;;;;;;;;;;;;;;;;;;;;
-;;; do_blit_line
-;;; - Blits a line from (LINE_X1,LINE_Y1) to (LINE_X2,LINE_Y2)
-;;; - Uses register bank 0
-;;; ;;;;;;;;;;;;;;;;;;;;;;;;
-	
-do_blit_line:
 	GPU_RTS
 	
 	.phrase
@@ -150,7 +135,7 @@ _blit_filled_triangle:
 	jump	ne,(r30)	; && y1 != y2, skip
 	nop
 	cmp	r26,r27
-	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap. is this correct?
+	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap.
 	nop
 	
 	;; y2 > y1 or x2 > x1. Swap v1 and v2.
@@ -228,7 +213,7 @@ _blit_filled_triangle:
 	jump	ne,(r30)	; if y1 == y2...
 	nop
 	cmp	r26,r27
-	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap. is this correct?
+	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap.
 	nop
 	
 	;; y2 > y1 or x2 > x1. Swap v1 and v2.
@@ -277,7 +262,6 @@ _blit_filled_triangle:
 	jump	eq,(r30)
 	nop
 
-	;; Flat-top and flat-bottom triangles work, but the general case seems to be wrong
 .draw_general_case:
 	;; RTS if we already drew a trivial case
 	movei	#general_case,TEMP1
@@ -487,7 +471,6 @@ _polyfill_blit_registers_setup:
 	movei	#A1_PIXEL,B_A1_PIXEL
 	movei	#A1_FPIXEL,B_A1_FPIXEL
 	movei	#A1_INC,B_A1_INC
-	movei	#A1_FINC,B_A1_FINC
 	movei	#A1_FLAGS,B_A1_FLAGS
 	movei	#A1_STEP,B_A1_STEP
 	movei	#B_PATD,B_B_PATD
@@ -520,8 +503,6 @@ _polyfill_blit_registers_setup:
 	
 	store	TEMP1,(B_A1_FPIXEL)
 	store	TEMP2,(B_A1_FLAGS)
-
-	moveq	#$00000000,TEMP1
 	store	TEMP1,(B_A1_STEP)
 
 	GPU_RTS
@@ -564,21 +545,22 @@ _do_fill_flattop_polygon:
 .polyfill_loop:
 	move	POLYFILL_CUR_X1,r15
 	move	POLYFILL_CUR_X2,r16
-	shrq	#16,r15
-	shrq	#16,r16
 
 .clamp_x1:
-	btst	#15,r15
+	btst	#31,r15
 	jr	eq,.clamp_x2	; check the sign of r15. if negative, clamp to 0
 	nop
 	moveq	#0,r15
 .clamp_x2:
-	btst	#15,r16		; check the sign of r16. if negative, clamp to 0
+	btst	#31,r16		; check the sign of r16. if negative, clamp to 0
 	jr	eq,.reorder
 	nop
 	moveq	#0,r16	
 
 .reorder:
+	shrq	#16,r15
+	shrq	#16,r16
+	
 	cmp	r15,r16
 	jr	ne,.notsame	; make sure x1 != x2
 	nop
@@ -664,21 +646,22 @@ _do_fill_flatbottom_polygon:
 .polyfill_loop:
 	move	POLYFILL_CUR_X1,r15
 	move	POLYFILL_CUR_X2,r16
-	shrq	#16,r15
-	shrq	#16,r16
 
 .clamp_x1:
-	btst	#15,r15
+	btst	#31,r15
 	jr	eq,.clamp_x2	; check the sign of r15. if negative, clamp to 0
 	nop
 	moveq	#0,r15
 .clamp_x2:
-	btst	#15,r16		; check the sign of r16. if negative, clamp to 0
+	btst	#31,r16		; check the sign of r16. if negative, clamp to 0
 	jr	eq,.reorder
 	nop
 	moveq	#0,r16	
 
 .reorder:
+	shrq	#16,r15
+	shrq	#16,r16
+	
 	cmp	r15,r16
 	jr	ne,.notsame	; make sure x1 != x2
 	nop
@@ -882,53 +865,10 @@ _gpu_project_and_draw_triangle::
 
 	;; If no point of the triangle is on screen, skip to the next triangle.
 	GPU_JSR	_gpu_any_visible_points
-	
-	movei	#_gpu_tri_point_1,r10
-	movei	#_tri_ndc_1,r11
-	load	(r10),r12	
-	load	(r11),r13
-	move	r12,r14
-	store	r12,(r13)
-	addq	#4,r10
-	addq	#4,r13
-	load	(r10),r12
-	move	r12,r15
-	store	r12,(r13)
-	addq	#4,r10
-	addq	#4,r13
-	load	(r10),r12
-	move	r12,r16
-	store	r12,(r13)
 
 	movei	#.advance_triangle,r30
-	movei	#$00020000,TEMP1 ; add 2 to make this always positive if the value is correct
-	add	TEMP1,r14
-	add	TEMP1,r15
-
-	movei	#$00010000,TEMP1
-	movei	#$00030000,TEMP2
-	
-	;; Skip this triangle unless 1 > p1.x < 3
-	cmp	r14,TEMP1
-	jump	hi,(r30)	; p1.x is out of range low
-	nop
-	cmp	r14,TEMP2	; cycle optimization
-	jump	mi,(r30)	; p1.x is out of range high
-	nop
-	
-	;; Skip this triangle unless 1 > p1.y < 3
-	cmp	r15,TEMP1
-	jump	hi,(r30)	; p1.x is out of range low
-	nop
-	cmp	r15,TEMP2	; cycle optimization
-	jump	mi,(r30)	; p1.x is out of range high
-	nop
-	
-	;; Skip this unless 1 >= p1.z < 2
-	movei	#.advance_triangle,r30
-	btst	#16,r16
+	cmpq	#0,TEMP1
 	jump	eq,(r30)
-	nop
 
 .determine_triangle_winding:
 	WIND_POINT_1	.equr	r6
@@ -959,22 +899,23 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_2,r4
 	movei	#_gpu_tri_point_3,r5
 
+	movei	#4,r14
+	movei	#8,r15
+
 	;; X
 	load	(r3),WIND_V0_X	
 	load	(r4),WIND_V1_X
 	load	(r5),WIND_V2_X	
-	moveq	#4,r14
 	
 	;; Y
 	load	(r14+r3),WIND_V0_Y
 	load	(r14+r4),WIND_V1_Y
 	load	(r14+r5),WIND_V2_Y
-	moveq	#8,r14
 
 	;; Z
-	load	(r14+r3),WIND_V0_Z
-	load	(r14+r4),WIND_V1_Z
-	load	(r14+r5),WIND_V2_Z
+	load	(r15+r3),WIND_V0_Z
+	load	(r15+r4),WIND_V1_Z
+	load	(r15+r5),WIND_V2_Z
 
 	;; http://cmichel.io/understanding-front-faces-winding-order-and-normals/
 	;; u = v1 - v0
@@ -1185,8 +1126,71 @@ _gpu_project_and_draw_triangle::
 
 ;;; Are any points of the triangle in the drawing area?
 _gpu_any_visible_points:
+	movei	#_gpu_tri_point_1,r10
+	movei	#4,r14
+	load	(r10),r0
+	load	(r14+r10),r1
+	addq	#4,r14
+	load	(r14+r10),r2
+	GPU_JSR	_gpu_point_is_visible
+
+	movei	#_gpu_tri_point_2,r10
+	movei	#4,r14
+	load	(r10),r0
+	load	(r14+r10),r1
+	addq	#4,r14
+	load	(r14+r10),r2
+	GPU_JSR	_gpu_point_is_visible
+
+	movei	#_gpu_tri_point_3,r10
+	movei	#4,r14
+	load	(r10),r0
+	load	(r14+r10),r1
+	addq	#4,r14
+	load	(r14+r10),r2
+	GPU_JSR	_gpu_point_is_visible
 	
+	GPU_RTS
+
+_gpu_point_is_visible:
+	;; Takes an X,Y,Z normalized coordinate triple in r0-r2.
+	;; Returns 1 if the point is in the screen area, 0 if the point is outside.
+	movei	#.not_visible,r30
 	
+	movei	#$00020000,r3 	; add 2 to make X and Y always positive if the value is correct
+	add	r3,TEMP1
+	add	r3,TEMP2
+
+	movei	#$00010000,r4
+	movei	#$00030000,r5
+	
+	;; Skip this triangle unless 1 > p1.x < 3
+	cmp	TEMP1,r4
+	jump	hi,(r30)	; p1.x is out of range low
+	nop
+	cmp	TEMP1,r5	; cycle optimization
+	jump	mi,(r30)	; p1.x is out of range high
+	nop
+	
+	;; Skip this triangle unless 1 > p1.y < 3
+	cmp	TEMP2,r4
+	jump	hi,(r30)	; p1.y is out of range low
+	nop
+	cmp	TEMP2,r5	; cycle optimization
+	jump	mi,(r30)	; p1.y is out of range high
+	nop
+	
+	;; Skip this unless 1 >= p1.z < 2
+	btst	#16,r2
+	jump	eq,(r30)
+	nop
+
+.visible:
+	moveq	#1,TEMP1
+	GPU_RTS
+
+.not_visible:
+	moveq	#0,TEMP1
 	GPU_RTS
 	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1223,6 +1227,7 @@ _gpu_perspective_divide:
 	move	r10,TEMP2
 	addq	#4,TEMP2	; grab the W coordinate
 	load	(TEMP2),TEMP2
+	
 	GPU_JSR	FIXED_DIV
 	store	TEMP1,(r10)
 	
@@ -1392,11 +1397,11 @@ FIXED_PRODUCT_BANK_1:
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	.phrase
-stack_bank_0:	dcb.l	8,0
+stack_bank_0:	dcb.l	6,0
 stack_bank_0_end:
 
 	.phrase
-stack_bank_1:	dcb.l	8,0
+stack_bank_1:	dcb.l	6,0
 stack_bank_1_end:
 
 	
