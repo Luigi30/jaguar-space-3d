@@ -37,19 +37,36 @@
 	FP_STEP5_OPERAND_2	.equr	r29
 	FP_STEP6_OPERAND_1	.equr	r30
 	FP_STEP6_OPERAND_2	.equr	r19
+
+	.phrase
+FIXED_PRODUCT_BANK_1:
+	GPU_REG_BANK_1
+	PushReg	r5
+	movefa	r17,FP_A
+	movefa	r18,FP_B
+	GPU_JSR	FIXED_PRODUCT_BANK_1_ENTRY
+	PopReg	r5
+	
+	GPU_REG_BANK_0
+	movefa	FIXED_PRODUCT_RESULT,r5
+	
+	GPU_RTS
 	
 	.phrase
-FIXED_PRODUCT:
+FIXED_PRODUCT:	; compatibility until I change the labels
+FIXED_PRODUCT_BANK_0:
 	GPU_REG_BANK_0
-			
+
+	.phrase
+FIXED_PRODUCT_BANK_1_ENTRY:			
 	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
 	;; Result is returned in r5.	
-	movei   #$0000FFFF,LOWORD_MASK
-	movei   #0,FIXED_PRODUCT_RESULT
 
 	movefa	r17,FP_A
 	movefa	r18,FP_B
-	
+
+	movei   #$0000FFFF,LOWORD_MASK
+
 	;; Step 1: A.i * B.f
 	move	FP_A,FP_STEP1_OPERAND_1
 	move	FP_B,FP_STEP1_OPERAND_2
@@ -65,7 +82,7 @@ FIXED_PRODUCT:
 	mult    FP_STEP2_OPERAND_1,FP_STEP2_OPERAND_2
 
 	;; Pipeline step 1
-	add	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
+	move	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
 	
 	;; Step 3: (A.i * B.i) << 16
 	move	FP_A,FP_STEP3_OPERAND_1

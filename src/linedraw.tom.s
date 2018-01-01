@@ -93,6 +93,25 @@ _tri_slope2:			dcb.l  	1,0
 tri_x4:	dcb.l	1,0
 tri_y4:	dcb.l	1,0
 general_case:	dcb.l	1,0
+
+	.macro	COORDINATE_SWAP ptr1,ptr2
+	movei	#4,r4
+	movei	#.swap_loop\~,TEMP1
+.swap_loop\~:
+	load	(\ptr1),r2
+	load	(\ptr2),r3
+	store	r2,(\ptr2)
+	store	r3,(\ptr1)
+	subq	#1,r4
+	addq	#4,\ptr1
+	addq	#4,\ptr2
+	cmpq	#0,r4
+	jump	ne,(TEMP1)	; swap 16 bytes
+	nop
+.swap_done\~:
+	subq	#16,\ptr1
+	subq	#16,\ptr2
+	.endm
 	
 	.phrase
 _blit_filled_triangle:
@@ -117,12 +136,10 @@ _blit_filled_triangle:
 	addq	#16,r10
 	move	POLY_PTR_VERTICES,r22
 
-	load	(r15+r20),r23	; get Y coordinates
-	load	(r15+r21),r24
-	load	(r15+r22),r25
-	load	(r14+r20),r26	; get X coordinates
-	load	(r14+r21),r27
-	load	(r14+r22),r28
+	load	(r15+r20),r23	; v1.y
+	load	(r15+r21),r24	; v2.y
+	load	(r14+r20),r26	; v1.x
+	load	(r14+r21),r27	; v2.x
 
 	;; TODO: Make these functions instead to save space.
 .swap1:
@@ -138,32 +155,16 @@ _blit_filled_triangle:
 	jump	lo,(r30)	; if y1 == y2 && x1 > x2, swap.
 	nop
 	
+;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	;; y2 > y1 or x2 > x1. Swap v1 and v2.
 .swap1_do:
-	movei	#4,r4
-	movei	#.swap1_loop,r29
-.swap1_loop:
-	load	(r20),r2
-	load	(r21),r3
-	store	r2,(r21)
-	store	r3,(r20)
-	subq	#1,r4
-	addq	#4,r20
-	addq	#4,r21
-	cmpq	#0,r4
-	jump	ne,(r29)	; swap 16 bytes
-	nop
-.swap1_done:
-	subq	#16,r20
-	subq	#16,r21
-
+	COORDINATE_SWAP	r20,r21
+	
 .swap2:
-	load	(r15+r20),r23	; get Y coordinates
-	load	(r15+r21),r24
-	load	(r15+r22),r25
-	load	(r14+r20),r26	; get X coordinates
-	load	(r14+r21),r27
-	load	(r14+r22),r28
+	load	(r14+r21),r27	; v2.y
+	load	(r14+r22),r28	; v3.y
+	load	(r15+r21),r24	; v2.x
+	load	(r15+r22),r25	; v3.x
 	
 	movei	#.swap3,r30
 	movei	#.swap2_do,r29
@@ -179,30 +180,13 @@ _blit_filled_triangle:
 	
 	;; y3 > y2 or x3 > x2. Swap v3 and v2.
 .swap2_do:
-	movei	#4,r4
-	movei	#.swap2_loop,r29
-.swap2_loop:
-	load	(r21),r2
-	load	(r22),r3
-	store	r2,(r22)
-	store	r3,(r21)
-	subq	#1,r4
-	addq	#4,r21
-	addq	#4,r22
-	cmpq	#0,r4
-	jump	ne,(r29)	; swap 16 bytes
-	nop
-.swap2_done:
-	subq	#16,r21
-	subq	#16,r22
+	COORDINATE_SWAP	r21,r22
 
 .swap3:
-	load	(r15+r20),r23	; get Y coordinates
-	load	(r15+r21),r24
-	load	(r15+r22),r25
-	load	(r14+r20),r26	; get X coordinates
-	load	(r14+r21),r27
-	load	(r14+r22),r28
+	load	(r15+r20),r23	; v1.y
+	load	(r15+r21),r24	; v2.y
+	load	(r14+r20),r26	; v1.x
+	load	(r14+r21),r27	; v2.x
 	
 	movei	#.swaps_done,r30
 	movei	#.swap3_do,r29
@@ -218,30 +202,12 @@ _blit_filled_triangle:
 	
 	;; y2 > y1 or x2 > x1. Swap v1 and v2.
 .swap3_do:
-	movei	#4,r4
-	movei	#.swap3_loop,r29
-.swap3_loop:
-	load	(r20),r2
-	load	(r21),r3
-	store	r2,(r21)
-	store	r3,(r20)
-	subq	#1,r4
-	addq	#4,r20
-	addq	#4,r21
-	cmpq	#0,r4
-	jump	ne,(r29)	; swap 16 bytes
-	nop
-.swap3_done:
-	subq	#16,r20
-	subq	#16,r21
+	COORDINATE_SWAP r20,r21
 
 .swaps_done:
-	load	(r14+r20),r23	; get X coordinates
-	load	(r14+r21),r24
-	load	(r14+r22),r25
-	load	(r15+r20),r26	; get Y coordinates
-	load	(r15+r21),r27
-	load	(r15+r22),r28
+	load	(r15+r20),r26	; v1.y
+	load	(r15+r21),r27	; v2.y
+	load	(r15+r22),r28	; v3.y
 
 	movei	#general_case,TEMP1
 	moveq	#0,TEMP2
@@ -902,52 +868,52 @@ _gpu_project_and_draw_triangle::
 	movei	#4,r14
 	movei	#8,r15
 
-	;; X
-	load	(r3),WIND_V0_X	
-	load	(r4),WIND_V1_X
-	load	(r5),WIND_V2_X	
+	;; v0
+	;; (r3)     = v0.x
+	;; (r14+r3) = v0.y
+	;; (r15+r3) = v0.z
+
+	;; v1
+	;; (r4)     = v1.x
+	;; (r14+r4) = v1.y
+	;; (r15+r4) = v1.z
+
+	;; v2
+	;; (r5)     = v2.x
+	;; (r14+r5) = v2.y
+	;; (r15+r5) = v2.z
 	
-	;; Y
-	load	(r14+r3),WIND_V0_Y
-	load	(r14+r4),WIND_V1_Y
-	load	(r14+r5),WIND_V2_Y
-
-	;; Z
-	load	(r15+r3),WIND_V0_Z
-	load	(r15+r4),WIND_V1_Z
-	load	(r15+r5),WIND_V2_Z
-
 	;; http://cmichel.io/understanding-front-faces-winding-order-and-normals/
 	;; u = v1 - v0
-	move	WIND_V1_X,TEMP2
-	move	WIND_V0_X,TEMP1
+	load	(r4),TEMP2
+	load	(r3),TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_U_X
 	move	TEMP2,r2
 
-	move	WIND_V1_Y,TEMP2
-	move	WIND_V0_Y,TEMP1
+	load	(r14+r4),TEMP2
+	load	(r14+r3),TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_U_Y
 
-	move	WIND_V1_Z,TEMP2
-	move	WIND_V0_Z,TEMP1
+	load	(r15+r4),TEMP2
+	load	(r15+r3),TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_U_Z
 
 	;; v = v2 - v0
-	move	WIND_V2_X,TEMP2
-	move	WIND_V0_X,TEMP1
+	load	(r5),TEMP2
+	load	(r3),TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_V_X
 
-	move	WIND_V2_Y,TEMP2
-	move	WIND_V0_Y,TEMP1
+	load	(r14+r5),TEMP2
+	load	(r14+r3),TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_V_Y
 
-	move	WIND_V2_Z,TEMP2
-	move	WIND_V0_Z,TEMP1
+	load	(r15+r5),TEMP2
+	load	(r15+r3),TEMP1
 	sub	TEMP1,TEMP2
 	move	TEMP2,VECTOR_V_Z
 	
@@ -962,7 +928,6 @@ _gpu_project_and_draw_triangle::
 
 	move	VECTOR_U_Z,r17
 	move	VECTOR_V_Y,r18
-
 	GPU_JSR FIXED_PRODUCT_BANK_1
 	sub	r5,r6
 	move	r6,r2
@@ -991,14 +956,6 @@ _gpu_project_and_draw_triangle::
 	sub	r5,r6
 	move	r6,r4
 
-	move	VECTOR_U_X,r16
-	move	VECTOR_U_Y,r17
-	move	VECTOR_U_Z,r18
-
-	move	VECTOR_V_X,r20
-	move	VECTOR_V_Y,r21
-	move	VECTOR_V_Z,r22
-
 .normalize:
 	GPU_JSR	FIXED_NORMALIZE
 	
@@ -1010,6 +967,7 @@ _gpu_project_and_draw_triangle::
 	store	r4,(TEMP2)
 
 	;; Now create a vector from the camera to the triangle's p1.
+	;; TODO: this needs to be rotated by the view's forward vector so we light the world properly
 	movei	#_gpu_tri_point_1,r10
 	load	(r10),r11
 	addq	#4,r10
@@ -1040,7 +998,6 @@ _gpu_project_and_draw_triangle::
 	;; Calculate the dot product of V and p1 vector
 	FIXED_DOT_PRODUCT	r2,r3,r4, r20,r21,r22, r6
 
-	;;Clamp to 0.999
 	movei	#.advance_triangle,r30
 	btst	#31,r6
 	jump	ne,(r30)	; if surface normal is positive, it's visible
@@ -1264,21 +1221,21 @@ _gpu_matrix_vector_product:
 .calculate_row:
 	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
 	load	(MV_VECTOR),r18	
-	GPU_JSR	FIXED_PRODUCT	; matrix->data[0][0] * vector->x
+	GPU_JSR	FIXED_PRODUCT_BANK_0	; matrix->data[0][0] * vector->x
 	move	r5,MV_ACCUMULATOR
 	
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
 	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
 	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[0][1] * vector->y
+	GPU_JSR FIXED_PRODUCT_BANK_0	; matrix->data[0][1] * vector->y
 	add	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
 	addq	#4,MV_VECTOR
 	load	(MV_MATRIX_OFFSET+MV_MATRIX),r17
 	load	(MV_VECTOR),r18
-	GPU_JSR FIXED_PRODUCT	; matrix->data[0][2] * vector->z
+	GPU_JSR FIXED_PRODUCT_BANK_0	; matrix->data[0][2] * vector->z
 	add	r5,MV_ACCUMULATOR
 
 	addq	#4,MV_MATRIX_OFFSET
@@ -1302,106 +1259,13 @@ _gpu_matrix_vector_product:
 	GPU_RTS
 	
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	.phrase
-FIXED_PRODUCT_BANK_1:
-	GPU_REG_BANK_1
-	nop
-	nop
-	nop
-			
-	;; Subroutine that multiplies two fixed-point numbers r17 and r18.
-	;; Result is returned in r5.
-	
-	movei   #$0000FFFF,LOWORD_MASK
-	movei   #0,FIXED_PRODUCT_RESULT
-
-	movefa	r17,FP_A
-	movefa	r18,FP_B
-	
-	;; Step 1: A.i * B.f
-	move	FP_A,FP_STEP1_OPERAND_1
-	move	FP_B,FP_STEP1_OPERAND_2
-	shrq	#16,FP_STEP1_OPERAND_1
-	and	LOWORD_MASK,FP_STEP1_OPERAND_2
-	mult	FP_STEP1_OPERAND_1,FP_STEP1_OPERAND_2
-	
-	;; Step 2: A.f * B.i
-	move  	FP_A,FP_STEP2_OPERAND_1
-	move  	FP_B,FP_STEP2_OPERAND_2
-	and     LOWORD_MASK,FP_STEP2_OPERAND_1
-	shrq    #16,FP_STEP2_OPERAND_2
-	mult    FP_STEP2_OPERAND_1,FP_STEP2_OPERAND_2
-
-	;; Pipeline step 1
-	add	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-	;; Step 3: (A.i * B.i) << 16
-	move	FP_A,FP_STEP3_OPERAND_1
-	move  	FP_B,FP_STEP3_OPERAND_2
-	shrq    #16,FP_STEP3_OPERAND_1
-	shrq    #16,FP_STEP3_OPERAND_2
-	mult    FP_STEP3_OPERAND_1,FP_STEP3_OPERAND_2
-	shlq    #16,FP_STEP3_OPERAND_2
-
-	;; Pipeline step 2
-	add     FP_STEP2_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-	;; Step 4: (A.f * B.f) >> 16
-	move  	FP_A,FP_STEP4_OPERAND_1
-	move  	FP_B,FP_STEP4_OPERAND_2
-	and     LOWORD_MASK,FP_STEP4_OPERAND_1
-	and     LOWORD_MASK,FP_STEP4_OPERAND_2
-	mult    FP_STEP4_OPERAND_1,FP_STEP4_OPERAND_2
-	shrq    #16,FP_STEP4_OPERAND_2
-
-	;; Pipeline step 3
-	add     FP_STEP3_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-.neg_a_check:           ; Is A negative? Add (-B.f) << 16 if so.
-	move  	FP_A,FP_STEP5_OPERAND_1
-	move	FP_B,FP_STEP5_OPERAND_2
-	and     LOWORD_MASK,FP_STEP5_OPERAND_2 ; get B.f
-	btst    #31,FP_STEP5_OPERAND_1 ; is A a negative number?
-	jr      eq,.neg_b_check
-	nop
-	
-	neg     FP_STEP5_OPERAND_2
-	shlq    #16,FP_STEP5_OPERAND_2
-	add     FP_STEP5_OPERAND_2,FIXED_PRODUCT_RESULT
-
-.neg_b_check:           ; Is B negative? Add (-A.f) << 16 if so.
-	move 	FP_A,FP_STEP6_OPERAND_1
-	move	FP_B,FP_STEP6_OPERAND_2
-	and     LOWORD_MASK,FP_STEP6_OPERAND_1 ; get A.f
-	btst    #31,FP_STEP6_OPERAND_2 ; is B a negative number?
-	jr      eq,.accumulate
-	nop
-	
-	neg     FP_STEP6_OPERAND_1
-	shlq    #16,FP_STEP6_OPERAND_1
-	add     FP_STEP6_OPERAND_1,FIXED_PRODUCT_RESULT
-
-.accumulate:
-	add     FP_STEP4_OPERAND_2,FIXED_PRODUCT_RESULT
-	nop
-	nop
-	nop
-
-.done:
-	GPU_REG_BANK_0
-	nop
-	movefa    FIXED_PRODUCT_RESULT,r5
-	nop
-	GPU_RTS
-
-;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	.phrase
-stack_bank_0:	dcb.l	6,0
+stack_bank_0:	dcb.l	8,0
 stack_bank_0_end:
 
 	.phrase
-stack_bank_1:	dcb.l	6,0
+stack_bank_1:	dcb.l	8,0
 stack_bank_1_end:
 
 	
