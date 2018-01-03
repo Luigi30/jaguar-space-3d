@@ -202,7 +202,7 @@ int main() {
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    cube_ptr->triangles = &MODEL_cube_tri_list;
+    cube_ptr->triangles = &MODEL_gay_tri_list;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
     sle->shape_Node.ln_Name = malloc(10);
@@ -323,9 +323,9 @@ int main() {
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 
     Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
-    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    //cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
     cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
-    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+    //cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
 
     framecounter = (framecounter + 1) % 60;
 
@@ -436,6 +436,15 @@ int main() {
 	
 	GPU_PROJECT_AND_DRAW_TRIANGLE();
 	jag_gpu_wait();
+
+	/*
+	sprintf(skunkoutput, "V1 NDC X: %08X", tri_ndc_1->x);
+        BLIT_8x8_text_string(text_buffer, 8,  8, skunkoutput);
+	sprintf(skunkoutput, "V1 NDC Y: %08X", tri_ndc_1->y);
+        BLIT_8x8_text_string(text_buffer, 8, 16, skunkoutput);
+	sprintf(skunkoutput, "V1 NDC Z: %08X", tri_ndc_1->z);
+        BLIT_8x8_text_string(text_buffer, 8, 24, skunkoutput);
+	*/
       }
 
     /*

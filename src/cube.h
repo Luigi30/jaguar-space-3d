@@ -31,4 +31,7 @@ extern Vector3FX **MODEL_sphere_tri_list;
 extern Vector3FX **MODEL_cone;
 extern Vector3FX **MODEL_cone_tri_list;
 
+extern Vector3FX **MODEL_gay;
+extern Vector3FX **MODEL_gay_tri_list;
+
 #endif

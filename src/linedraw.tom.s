@@ -1,3 +1,5 @@
+;;; Triangle-based 3D rendering engine for the Atari Jaguar GPU.
+
 ; jump condition codes
 ;   %00000:   T    always
 ;   %00100:   CC   carry clear (less than)
@@ -84,6 +86,9 @@ _ptr_current_triangle:		dcb.l	1,0
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	.include "fixed.risc.inc"
+	INCLUDE_FIXED_PRODUCT
+	INCLUDE_FIXED_DIV
+	INCLUDE_FIXED_SQRT
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
@@ -829,11 +834,26 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,TEMP1
 	GPU_JSR	_gpu_perspective_divide
 
+	;; Debugging: Save the vertices so we can log them
+	movei	#_gpu_tri_point_1,r10
+	movei	#_tri_ndc_1,r11
+	load	(r10),r2
+	load	(r11),r3
+	store	r2,(r3)
+	addq	#4,r10
+	addq	#4,r3
+	load	(r10),r2
+	store	r2,(r3)
+	addq	#4,r10
+	addq	#4,r3
+	load	(r10),r2
+	store	r2,(r3)
+
 	;; If no point of the triangle is on screen, skip to the next triangle.
 	GPU_JSR	_gpu_any_visible_points
 
 	movei	#.advance_triangle,r30
-	cmpq	#0,TEMP1
+	cmpq	#0,r20
 	jump	eq,(r30)
 
 .determine_triangle_winding:
@@ -1021,43 +1041,79 @@ _gpu_project_and_draw_triangle::
 	movei	#_gpu_tri_point_3,r12
 
 	;; Multiply X coordinates by 160 and add 160
-	load	(r10),r17
+	;; TODO: bit shift and addition
+	;; x * 160 = (x << 7) + (x << 5)
 	movei	#$00A00000,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r18,r5
-	store	r5,(r10)
 
-	load	(r11),r17
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r18,r5
-	store	r5,(r11)
+	load	(r10),r0
+	load	(r11),r2
+	load	(r12),r4
 
-	load	(r12),r17
-	GPU_JSR	FIXED_PRODUCT_BANK_1
+	move	r0,r1
+	move	r2,r3
+	move	r4,r5
+	
+	shlq	#7,r0
+	shlq	#5,r1
+	shlq	#7,r2
+	shlq	#5,r3
+	shlq	#7,r4
+	shlq	#5,r5
+	
+	add	TEMP1,TEMP2
+	add	r2,r3
+	add	r4,r5
+
+	add	r18,TEMP2
+	add	r18,r3
 	add	r18,r5
+
+	store	TEMP2,(r10)
+	store	r3,(r11)
 	store	r5,(r12)
-
+	
 	;; Multiply Y coordinates by 100 and add 100
+	;; x * 100 = (x << 6) + (x << 5) + (x << 2)
+	
 	addq	#4,r10
 	addq	#4,r11
 	addq	#4,r12
-	
-	load	(r10),r17
 	movei	#$00640000,r18
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r18,r5
-	store	r5,(r10)
 
-	load	(r11),r17
-	GPU_JSR	FIXED_PRODUCT_BANK_1
+	load	(r10),r0
+	load	(r11),r3
+	load	(r12),r6
+	move	r0,r1
+	move	r0,r2
+	move	r3,r4
+	move	r3,r5
+	move	r6,r7
+	move	r6,r8
+	
+	shlq	#6,TEMP1
+	shlq	#5,TEMP2
+	shlq	#2,r2
+	shlq	#6,r3
+	shlq	#5,r4
+	shlq	#2,r5
+	shlq	#6,r6
+	shlq	#5,r7
+	shlq	#2,r8
+	
+	add	TEMP1,TEMP2
+	add	TEMP2,r2
+	add	r18,r2
+	add	r3,r4
+	add	r4,r5
 	add	r18,r5
+	add	r6,r7
+	add	r7,r8
+	add	r18,r8
+
+	store	r2,(r10)
 	store	r5,(r11)
-
-	load	(r12),r17
-	GPU_JSR	FIXED_PRODUCT_BANK_1
-	add	r18,r5
-	store	r5,(r12)
-
+	store	r8,(r12)
+	
 	movei	#_gpu_tri_point_1,TEMP1
 	movei	#_ptr_vertex_array,TEMP2
 	store	TEMP1,(TEMP2)
@@ -1090,6 +1146,7 @@ _gpu_any_visible_points:
 	addq	#4,r14
 	load	(r14+r10),r2
 	GPU_JSR	_gpu_point_is_visible
+	move	TEMP1,r20
 
 	movei	#_gpu_tri_point_2,r10
 	movei	#4,r14
@@ -1098,6 +1155,7 @@ _gpu_any_visible_points:
 	addq	#4,r14
 	load	(r14+r10),r2
 	GPU_JSR	_gpu_point_is_visible
+	or	TEMP1,r20
 
 	movei	#_gpu_tri_point_3,r10
 	movei	#4,r14
@@ -1106,6 +1164,7 @@ _gpu_any_visible_points:
 	addq	#4,r14
 	load	(r14+r10),r2
 	GPU_JSR	_gpu_point_is_visible
+	or	TEMP1,r20
 	
 	GPU_RTS
 
@@ -1120,8 +1179,10 @@ _gpu_point_is_visible:
 
 	movei	#$00010000,r4
 	movei	#$00030000,r5
+	movei	#$FFFF0000,r6
+	movei	#$00010000,r7
 	
-	;; Skip this triangle unless 1 > p1.x < 3
+	;; Skip this point unless 1 > p1.x < 3
 	cmp	TEMP1,r4
 	jump	hi,(r30)	; p1.x is out of range low
 	nop
@@ -1129,7 +1190,7 @@ _gpu_point_is_visible:
 	jump	mi,(r30)	; p1.x is out of range high
 	nop
 	
-	;; Skip this triangle unless 1 > p1.y < 3
+	;; Skip this point unless 1 > p1.y < 3
 	cmp	TEMP2,r4
 	jump	hi,(r30)	; p1.y is out of range low
 	nop
@@ -1138,9 +1199,10 @@ _gpu_point_is_visible:
 	nop
 	
 	;; Skip this unless 1 >= p1.z < 2
-	btst	#16,r2
-	jump	eq,(r30)
-	nop
+	and	r6,r2		; mask off the fraction
+	xor	r7,r2		; if Z is in the right range, r2 should now be 0
+	cmpq	#0,r2		; if it's not 0, reject the point
+	jump	ne,(r30)	
 
 .visible:
 	moveq	#1,TEMP1
@@ -1257,7 +1319,7 @@ _gpu_matrix_vector_product:
 	GPU_REG_BANK_0
 	nop
 	GPU_RTS
-	
+
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 	.phrase

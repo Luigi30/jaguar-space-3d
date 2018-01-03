@@ -38,6 +38,7 @@
 	FP_STEP6_OPERAND_1	.equr	r30
 	FP_STEP6_OPERAND_2	.equr	r19
 
+	.macro INCLUDE_FIXED_PRODUCT
 	.phrase
 FIXED_PRODUCT_BANK_1:
 	GPU_REG_BANK_1
@@ -137,8 +138,11 @@ FIXED_PRODUCT_BANK_1_ENTRY:
 	GPU_REG_BANK_1
 	movefa    FIXED_PRODUCT_RESULT,r5
 	GPU_RTS
+	.endm
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+	.macro INCLUDE_FIXED_DIV
 	.phrase
 FIXED_DIV:
 	;; Fixed-point divide.
@@ -197,7 +201,9 @@ FIXED_DIV:
 
 .return_divided:
 	GPU_RTS
+	.endm
 
+	.macro INCLUDE_FIXED_SQRT
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
 FIXED_SQRT:
@@ -254,3 +260,4 @@ FIXED_SQRT:
 	move	SQRT_ROOT,r0
 
 	GPU_RTS
+	.endm

@@ -5,6 +5,7 @@
 	xdef _DSP_StartSoundEngine
 	xdef _DSP_PlayModule
 	xdef _WriteEmuLog
+	xdef _EmuLog_String
 
 	xref dspcode
 
@@ -34,12 +35,6 @@ _DSP_PlayModule:
 	move.l	#1,U235SE_playmod
 
 	rts
-
-	even
-_WriteEmuLog:
-	MOVE.L	#$800000,a0
-	MOVE.B	d0,(a0)
-	RTS
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	cnop 0,4 ;modules must be long-aligned

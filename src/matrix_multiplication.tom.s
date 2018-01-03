@@ -633,31 +633,15 @@ FIXED_PRODUCT_BANK_0:
 
 .accumulate:
 	add     FP_STEP4_OPERAND_2,FIXED_PRODUCT_RESULT
-	nop
-	nop
-	nop
 
 .done:
 	GPU_REG_BANK_1
-	nop
-	nop
-	nop
 	movefa	FIXED_PRODUCT_RESULT,TEMP1
 	PopReg	r15
 	PopReg	r14
 	GPU_RTS
 
 _gpu_matrix_multiply_program_end::
-
-	;; Operands for matrix functions
-	.phrase
-_gpu_matrix_operand_1::	dcb.l	16,$AA55AA55 ;operand 1
-	.phrase
-_gpu_matrix_operand_2:: dcb.l	16,$AA55AA55 ;operand 2
-	.phrase
-_gpu_matrix_result::	dcb.l	16,$AA55AA55 ;result matrix
-	.phrase
-_gpu_accumulator:	dc.l	0
 
 ;;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	.phrase
@@ -845,8 +829,8 @@ _gpu_build_transformation_matrix_end::
 
 	;; Precalculate variables.
 	.phrase
-_gpu_matrix_ptr_result::		dc.l	0   ; storage for a pointer to a Matrix44
-_gpu_matrix_ptr_vector::		dc.l	0   ; storage for a pointer to a Vector3FX or Vector4FX
+_gpu_matrix_ptr_result::	dc.l	0   ; storage for a pointer to a Matrix44
+_gpu_matrix_ptr_vector::	dc.l	0   ; storage for a pointer to a Vector3FX or Vector4FX
 _gpu_matrix_vector:		dcb.l	4,0 ; storage for a Vector3FX or Vector4FX
 	
 	.phrase
@@ -854,11 +838,21 @@ _gpu_pc_result_storage::	dcb.l	16,$AA55AA55 ;the intermediate result
 	.phrase
 _gpu_pc_result_ptr:		dc.l	0
 
+	;; Operands for matrix functions
+	.phrase
+_gpu_matrix_operand_1::	dcb.l	16,$AA55AA55 ;operand 1
+	.phrase
+_gpu_matrix_operand_2:: dcb.l	16,$AA55AA55 ;operand 2
+	.phrase
+_gpu_matrix_result::	dcb.l	16,$AA55AA55 ;result matrix
+	.phrase
+_gpu_accumulator:	dc.l	0
+
 	.phrase
 _gpu_matrix_identity:	dc.l	$00010000,$00000000,$00000000,$00000000
-				dc.l	$00000000,$00010000,$00000000,$00000000
-				dc.l	$00000000,$00000000,$00010000,$00000000
-				dc.l	$00000000,$00000000,$00000000,$00010000
+			dc.l	$00000000,$00010000,$00000000,$00000000
+			dc.l	$00000000,$00000000,$00010000,$00000000
+			dc.l	$00000000,$00000000,$00000000,$00010000
 
 	;; 64-byte stack
 	.phrase
