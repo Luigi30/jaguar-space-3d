@@ -68,49 +68,50 @@ FIXED_PRODUCT_BANK_1_ENTRY:
 
 	movei   #$0000FFFF,LOWORD_MASK
 
-	;; Step 1: A.i * B.f
 	move	FP_A,FP_STEP1_OPERAND_1
 	move	FP_B,FP_STEP1_OPERAND_2
-	shrq	#16,FP_STEP1_OPERAND_1
-	and	LOWORD_MASK,FP_STEP1_OPERAND_2
-	mult	FP_STEP1_OPERAND_1,FP_STEP1_OPERAND_2
-	
-	;; Step 2: A.f * B.i
 	move  	FP_A,FP_STEP2_OPERAND_1
 	move  	FP_B,FP_STEP2_OPERAND_2
-	and     LOWORD_MASK,FP_STEP2_OPERAND_1
-	shrq    #16,FP_STEP2_OPERAND_2
-	mult    FP_STEP2_OPERAND_1,FP_STEP2_OPERAND_2
-
-	;; Pipeline step 1
-	move	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-	;; Step 3: (A.i * B.i) << 16
 	move	FP_A,FP_STEP3_OPERAND_1
 	move  	FP_B,FP_STEP3_OPERAND_2
-	shrq    #16,FP_STEP3_OPERAND_1
-	shrq    #16,FP_STEP3_OPERAND_2
-	mult    FP_STEP3_OPERAND_1,FP_STEP3_OPERAND_2
-	shlq    #16,FP_STEP3_OPERAND_2
-
-	;; Pipeline step 2
-	add     FP_STEP2_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-	;; Step 4: (A.f * B.f) >> 16
 	move  	FP_A,FP_STEP4_OPERAND_1
 	move  	FP_B,FP_STEP4_OPERAND_2
-	and     LOWORD_MASK,FP_STEP4_OPERAND_1
-	and     LOWORD_MASK,FP_STEP4_OPERAND_2
-	mult    FP_STEP4_OPERAND_1,FP_STEP4_OPERAND_2
-	shrq    #16,FP_STEP4_OPERAND_2
-
-	;; Pipeline step 3
-	add     FP_STEP3_OPERAND_2,FIXED_PRODUCT_RESULT
-	
-.neg_a_check:           ; Is A negative? Add (-B.f) << 16 if so.
 	move  	FP_A,FP_STEP5_OPERAND_1
 	move	FP_B,FP_STEP5_OPERAND_2
-	and     LOWORD_MASK,FP_STEP5_OPERAND_2 ; get B.f
+	move 	FP_A,FP_STEP6_OPERAND_1
+	move	FP_B,FP_STEP6_OPERAND_2
+
+	;; Get the values ready for the multiply steps.
+	shrq	#16,FP_STEP1_OPERAND_1
+	shrq    #16,FP_STEP2_OPERAND_2
+	shrq    #16,FP_STEP3_OPERAND_1
+	shrq    #16,FP_STEP3_OPERAND_2
+
+	and	LOWORD_MASK,FP_STEP1_OPERAND_2
+	and     LOWORD_MASK,FP_STEP2_OPERAND_1
+	and     LOWORD_MASK,FP_STEP4_OPERAND_1
+	and     LOWORD_MASK,FP_STEP4_OPERAND_2
+	and     LOWORD_MASK,FP_STEP5_OPERAND_2
+	and     LOWORD_MASK,FP_STEP6_OPERAND_1
+
+	mult	FP_STEP1_OPERAND_1,FP_STEP1_OPERAND_2
+	mult    FP_STEP2_OPERAND_1,FP_STEP2_OPERAND_2
+	mult    FP_STEP3_OPERAND_1,FP_STEP3_OPERAND_2
+	mult    FP_STEP4_OPERAND_1,FP_STEP4_OPERAND_2
+
+	shlq    #16,FP_STEP3_OPERAND_2
+	shrq    #16,FP_STEP4_OPERAND_2
+
+	move	FP_STEP1_OPERAND_2,FIXED_PRODUCT_RESULT
+	add     FP_STEP2_OPERAND_2,FIXED_PRODUCT_RESULT
+	add     FP_STEP3_OPERAND_2,FIXED_PRODUCT_RESULT
+
+	;; Step 1: A.i * B.f
+	;; Step 2: A.f * B.i
+	;; Step 3: (A.i * B.i) << 16
+	;; Step 4: (A.f * B.f) >> 16
+	
+.neg_a_check:           ; Is A negative? Add (-B.f) << 16 if so.
 	btst    #31,FP_STEP5_OPERAND_1 ; is A a negative number?
 	jr      eq,.neg_b_check
 	nop
@@ -120,9 +121,6 @@ FIXED_PRODUCT_BANK_1_ENTRY:
 	add     FP_STEP5_OPERAND_2,FIXED_PRODUCT_RESULT
 
 .neg_b_check:           ; Is B negative? Add (-A.f) << 16 if so.
-	move 	FP_A,FP_STEP6_OPERAND_1
-	move	FP_B,FP_STEP6_OPERAND_2
-	and     LOWORD_MASK,FP_STEP6_OPERAND_1 ; get A.f
 	btst    #31,FP_STEP6_OPERAND_2 ; is B a negative number?
 	jr      eq,.accumulate
 	nop

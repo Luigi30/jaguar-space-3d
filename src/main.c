@@ -197,12 +197,25 @@ int main() {
   NewList((struct List *)scene_Shapes);
 
   /* Shapes. */
+ {
+    Shape *cube_ptr = calloc(1, sizeof(Shape));
+    cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(-3) };
+    cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
+    cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
+    cube_ptr->triangles = &MODEL_cube_tri_list;
+    ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
+    sle->shape_Data = cube_ptr;
+    sle->shape_Node.ln_Name = malloc(10);
+    strcpy(sle->shape_Node.ln_Name, "CUBE2");
+    AddHead((struct List*)scene_Shapes, (struct Node *)sle);
+  }
+  
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
     cube_ptr->scale       = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(1), .z = INT_TO_FIXED(1) };
-    cube_ptr->triangles = &MODEL_gay_tri_list;
+    cube_ptr->triangles = &MODEL_cube_tri_list;
     ShapeListEntry *sle = calloc(1, sizeof(ShapeListEntry));
     sle->shape_Data = cube_ptr;
     sle->shape_Node.ln_Name = malloc(10);
