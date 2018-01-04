@@ -59,6 +59,8 @@ void clear_video_buffer(uint8_t *buffer){
 
 int main() {
   EmuLog_String("main(): Begin space.\n");
+
+  MMIO16(0xF00028) = 0x06C1; //16-bit CRY video
   
   //set correct endianness
   MMIO32(G_END) = 0x00070007;
@@ -74,7 +76,6 @@ int main() {
   EmuLog_String("main(): DSP sound engine initialized\n");
   
   GPU_LOAD_MMULT_PROGRAM(); //Switch GPU to matrix operations
-
   
   srand(8675309);
   jag_console_hide();
@@ -175,10 +176,10 @@ int main() {
     mobj_background.graphic->p0.data	= (uint32_t)front_buffer >> 3;	/* ptr to pixel data */
     
     mobj_background.graphic->p1.xpos	= mobj_background.position.x;      /* X position on screen, -2048 to 2047 */
-    mobj_background.graphic->p1.depth	= O_DEPTH8 >> 12;		/* pixel depth of object */
+    mobj_background.graphic->p1.depth	= O_DEPTH16 >> 12;		/* pixel depth of object */
     mobj_background.graphic->p1.pitch	= 1;				/* 8 * PITCH is added to each fetch */
-    mobj_background.graphic->p1.dwidth  = mobj_background.pxWidth / 8;	/* pixel data width in 8-byte phrases */
-    mobj_background.graphic->p1.iwidth  = mobj_background.pxWidth / 8;	/* image width in 8-byte phrases, for clipping */	
+    mobj_background.graphic->p1.dwidth  = mobj_background.pxWidth / 4;	/* pixel data width in 8-byte phrases */
+    mobj_background.graphic->p1.iwidth  = mobj_background.pxWidth / 4;	/* image width in 8-byte phrases, for clipping */	
     mobj_background.graphic->p1.release= 0;				/* bus mastering, set to 1 when low-depth */
     mobj_background.graphic->p1.trans  = 1;				/* makes color 0 transparent */
     mobj_background.graphic->p1.index  = 0;
@@ -197,7 +198,8 @@ int main() {
   NewList((struct List *)scene_Shapes);
 
   /* Shapes. */
- {
+  /*
+    {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
     cube_ptr->translation = (Vector3FX){ .x = INT_TO_FIXED(1), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(-3) };
     cube_ptr->rotation    = (Vector3FX){ .x = INT_TO_FIXED(0), .y = INT_TO_FIXED(0), .z = INT_TO_FIXED(0) };
@@ -208,7 +210,8 @@ int main() {
     sle->shape_Node.ln_Name = malloc(10);
     strcpy(sle->shape_Node.ln_Name, "CUBE2");
     AddHead((struct List*)scene_Shapes, (struct Node *)sle);
-  }
+    }
+  */
   
   {
     Shape *cube_ptr = calloc(1, sizeof(Shape));
@@ -284,9 +287,21 @@ int main() {
       }
 
     jag_wait_vbl();
-    
-    clear_video_buffer(back_buffer);
-	
+
+    /* Clear the back buffer. */
+    jag_wait_blitter_ready(); //don't do this until the blitter is available
+  
+    MMIO32(A1_BASE)	= (long)back_buffer;
+    MMIO32(A1_PIXEL)	= BLIT_XY(0, 0);
+    MMIO32(A1_FPIXEL)	= 0;
+    MMIO32(A1_INC)	= BLIT_XY(1, 0);
+    MMIO32(A1_FINC)	= 0;
+    MMIO32(A1_FLAGS)	= PITCH1 | PIXEL16 | WID320 | XADDPHR | YADD0;
+    MMIO32(A1_STEP)	= BLIT_XY(0, 0);
+    MMIO64(B_PATD)	= 0;
+    MMIO32(B_COUNT)	= BLIT_XY(320, 200);
+    MMIO32(B_CMD)	= PATDSEL | UPDA1 | LFU_S;
+
     buildPerspectiveMatrix(mPerspective);
 
     /* Buffer is now clear. */
@@ -336,9 +351,9 @@ int main() {
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 
     Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
-    //cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
     cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
-    //cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
 
     framecounter = (framecounter + 1) % 60;
 

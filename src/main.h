@@ -41,17 +41,17 @@ typedef struct shape_list_entry_t {
   Shape *shape_Data;
 } ShapeListEntry;
 
-/* background pixel buffers - 8bpp */
-uint8_t background_frame_0[SCREEN_WIDTH * SCREEN_HEIGHT * 2];
-uint8_t background_frame_1[SCREEN_WIDTH * SCREEN_HEIGHT * 2];
+/* background pixel buffers - 16bpp */
+uint8_t background_frame_0[SCREEN_WIDTH * SCREEN_HEIGHT * 2]; // 320x200x16bpp CRY
+uint8_t background_frame_1[SCREEN_WIDTH * SCREEN_HEIGHT * 2]; // 320x200x16bpp CRY
 uint8_t *front_buffer;
 uint8_t *back_buffer;
 
 /* text buffer - 1bpp */
-uint8_t text_buffer[(SCREEN_WIDTH * SCREEN_HEIGHT) / 8];
+uint8_t text_buffer[(SCREEN_WIDTH * SCREEN_HEIGHT) / 8]; // 320x200x1bpp
 
-/* sprite buffer - 1bpp */
-uint8_t sprite_buffer[(SCREEN_WIDTH * SCREEN_HEIGHT)];
+/* sprite buffer - 8bpp */
+uint8_t sprite_buffer[(SCREEN_WIDTH * SCREEN_HEIGHT)]; //320x200x8bpp
 
 //GPU programs
 extern uint8_t blank_screen[];

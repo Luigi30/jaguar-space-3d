@@ -452,25 +452,26 @@ _polyfill_blit_registers_setup:
 	load	(TEMP1),TEMP1
 	store	TEMP1,(B_A1_BASE)
 
-	PushReg	r17
-
 	movei	#_gpu_tri_facing_ratio,TEMP1	
 	load	(TEMP1),r17     ; DEBUG: comment me to disable lighting
 *	movei	#$0000FFFF,r17	; DEBUG: uncomment me to disable lighting
+
+	movei	#$0000FF00,r18
+	movei	#$00008800,r19
+	and	r18,r17		; zero out everything other than the high byte of the ratio
+	shrq	#8,r17		; shift out all but the high byte of the ratio
+*	sat8	r17		; this will become the intensity.
+	or	r19,r17		; DEBUG: the color white
 	
-	shrq	#12,r17		; shift out all but the high nybble of the ratio.
-	sat8	r17
-	
+*	movei	#$000088FF,r17
 	store	r17,(B_B_PATD)
 
-	PopReg	r17
-	
 	movei	#$00C80140,TEMP1 ; 320x200 window
 	movei	#A1_CLIP,TEMP2
 	store	TEMP1,(TEMP2)
 
 	moveq	#0,TEMP1
-	movei	#PITCH1|PIXEL8|WID320|XADDPIX,TEMP2
+	movei	#PITCH1|PIXEL16|WID320|XADDPIX,TEMP2
 	
 	store	TEMP1,(B_A1_FPIXEL)
 	store	TEMP2,(B_A1_FLAGS)
@@ -586,7 +587,7 @@ _do_fill_flatbottom_polygon:
 
 	;; http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
 	
-	;; for (int scanlineY = v3.y; scanlineY > v1.y; scanlineY--)
+	;; for (int scanlineY = v1.y; scanlineY <= v2.y; scanlineY++)
 	;; {
 	;;   drawLine(POLYFILL_CUR_X1, scanlineY, POLYFILL_CUR_X2, scanlineY)
 	;;   POLYFILL_CUR_X1 -= tri_slope1
@@ -605,7 +606,7 @@ _do_fill_flatbottom_polygon:
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
-
+	
 	movei	#_tri_slope1,TEMP1
 	movei	#_tri_slope2,TEMP2
 	load	(TEMP1),r18
