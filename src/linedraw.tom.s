@@ -1,5 +1,8 @@
 ;;; Triangle-based 3D rendering engine for the Atari Jaguar GPU.
 
+;;; TODO: some problem in the flat-bottom polygon fill that causes extra lines to be drawn
+;;; off the ends of polygons
+	
 ; jump condition codes
 ;   %00000:   T    always
 ;   %00100:   CC   carry clear (less than)
@@ -460,10 +463,7 @@ _polyfill_blit_registers_setup:
 	movei	#$00008800,r19
 	and	r18,r17		; zero out everything other than the high byte of the ratio
 	shrq	#8,r17		; shift out all but the high byte of the ratio
-*	sat8	r17		; this will become the intensity.
 	or	r19,r17		; DEBUG: the color white
-	
-*	movei	#$000088FF,r17
 	store	r17,(B_B_PATD)
 
 	movei	#$00C80140,TEMP1 ; 320x200 window
@@ -555,9 +555,12 @@ _do_fill_flattop_polygon:
 	store	r10,(B_A1_PIXEL)
 
 	;; Draw a horizontal line from POLYFILL_CUR_X1 to POLYFILL_CUR_X2 on scanline POLYFILL_SCANLINE_CUR.
+	movei	#$0001FFFF,TEMP2
 	move 	r16,TEMP1
 	sub	r15,TEMP1
-	bset	#16,TEMP1
+	and	TEMP2,TEMP1
+	movei	#$00010000,TEMP2
+	or	TEMP2,TEMP1
 	store	TEMP1,(B_B_COUNT)
 	move	TEMP1,r12
 	
@@ -606,7 +609,8 @@ _do_fill_flatbottom_polygon:
 	movei	#$FFFF0000,r10
 	and	r10,POLYFILL_SCANLINE_START
 	and	r10,POLYFILL_SCANLINE_END
-	
+*	add	r10,POLYFILL_SCANLINE_END
+
 	movei	#_tri_slope1,TEMP1
 	movei	#_tri_slope2,TEMP2
 	load	(TEMP1),r18
@@ -614,6 +618,16 @@ _do_fill_flatbottom_polygon:
 
 	movei	#.polyfill_loop,r7
 	move	POLYFILL_SCANLINE_START,POLYFILL_SCANLINE_CUR
+
+*	movei	#.polyfill_complete,r15
+*	move	POLYFILL_SCANLINE_START,TEMP1
+*	move	POLYFILL_SCANLINE_END,TEMP2
+*	sub	TEMP1,TEMP2
+*	cmpq	#0,TEMP2
+*	jump	eq,(r15)
+*	nop
+	
+	movei	#_tri_slope1,TEMP1
 	
 .polyfill_loop:
 	move	POLYFILL_CUR_X1,r15
@@ -656,9 +670,12 @@ _do_fill_flatbottom_polygon:
 	store	r10,(B_A1_PIXEL)
 
 	;; Draw a horizontal line from POLYFILL_CUR_X1 to POLYFILL_CUR_X2 on scanline POLYFILL_SCANLINE_CUR.
+	movei	#$0001FFFF,TEMP2
 	move 	r16,TEMP1
 	sub	r15,TEMP1
-	bset	#16,TEMP1
+	and	TEMP2,TEMP1
+	movei	#$00010000,TEMP2
+	or	TEMP2,TEMP1
 	store	TEMP1,(B_B_COUNT)
 	move	TEMP1,r12
 	
@@ -673,8 +690,8 @@ _do_fill_flatbottom_polygon:
 	add	r19,POLYFILL_CUR_X2
 	
 	;; if POLYFILL_SCANLINE_CUR <= POLYFILL_SCANLINE_END, jump back to polyfill_loop
-	cmp	POLYFILL_SCANLINE_END,POLYFILL_SCANLINE_CUR
-	jump	ge,(r7)
+	cmp 	POLYFILL_SCANLINE_CUR,POLYFILL_SCANLINE_END
+	jump	lo,(r7)
 	nop
 
 .polyfill_complete:
