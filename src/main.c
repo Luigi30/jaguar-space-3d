@@ -177,8 +177,8 @@ int main() {
     
     mobj_background.graphic->p1.xpos	= mobj_background.position.x;      /* X position on screen, -2048 to 2047 */
     mobj_background.graphic->p1.depth	= O_DEPTH16 >> 12;		/* pixel depth of object */
-    mobj_background.graphic->p1.pitch	= 1;				/* 8 * PITCH is added to each fetch */
-    mobj_background.graphic->p1.dwidth  = mobj_background.pxWidth / 4;	/* pixel data width in 8-byte phrases */
+    mobj_background.graphic->p1.pitch	= 2;				/* 8 * PITCH is added to each fetch */
+    mobj_background.graphic->p1.dwidth  = mobj_background.pxWidth / 2;	/* pixel data width in 8-byte phrases */
     mobj_background.graphic->p1.iwidth  = mobj_background.pxWidth / 4;	/* image width in 8-byte phrases, for clipping */	
     mobj_background.graphic->p1.release= 0;				/* bus mastering, set to 1 when low-depth */
     mobj_background.graphic->p1.trans  = 1;				/* makes color 0 transparent */
@@ -296,7 +296,7 @@ int main() {
     MMIO32(A1_FPIXEL)	= 0;
     MMIO32(A1_INC)	= BLIT_XY(1, 0);
     MMIO32(A1_FINC)	= 0;
-    MMIO32(A1_FLAGS)	= PITCH1 | PIXEL16 | WID320 | XADDPHR | YADD0;
+    MMIO32(A1_FLAGS)	= PITCH2|ZOFFS1| PIXEL16 | WID320 | XADDPHR | YADD0;
     MMIO32(A1_STEP)	= BLIT_XY(0, 0);
     MMIO64(B_PATD)	= 0;
     MMIO32(B_COUNT)	= BLIT_XY(320, 200);
@@ -351,9 +351,9 @@ int main() {
     buildViewMatrix(mView, VIEW_EYE, VIEW_CENTER, VIEW_UP);
 
     Shape *cube = ((ShapeListEntry *)FindName(scene_Shapes, "CUBE"))->shape_Data;
-    cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
-    cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
-    cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
+    //cube->rotation.x = (cube->rotation.x + 0x00010000) % 0x01680000;
+    //cube->rotation.y = (cube->rotation.y + 0x00010000) % 0x01680000;
+    //cube->rotation.z = (cube->rotation.z + 0x00010000) % 0x01680000;
 
     framecounter = (framecounter + 1) % 60;
 

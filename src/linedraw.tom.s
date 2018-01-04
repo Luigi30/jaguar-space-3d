@@ -28,6 +28,10 @@
 	
 	;all FIXED_32
 	.globl _line_clut_color
+
+	.macro POLYGON_FILL_FLAGS
+	CLIP_A1|PATDSEL|DSTEN|DSTENZ|DSTWRZ|ZMODE2|LFU_REPLACE
+	.endm
 	
 ;Registers for line drawing.
 	LINE_X1		.equr	r10
@@ -52,6 +56,7 @@
 	B_A1_FLAGS	.equr	r27
 	B_A1_STEP	.equr	r28
 	B_B_PATD	.equr	r29
+	B_B_DSTD	.equr	r29
 	B_B_COUNT	.equr	r30
 	B_B_CMD		.equr	r8
 
@@ -464,14 +469,21 @@ _polyfill_blit_registers_setup:
 	and	r18,r17		; zero out everything other than the high byte of the ratio
 	shrq	#8,r17		; shift out all but the high byte of the ratio
 	or	r19,r17		; DEBUG: the color white
+	
+	move	r17,TEMP1	; duplicate the low word in the high word
+	shlq	#16,TEMP1
+	or	TEMP1,r17
+	
 	store	r17,(B_B_PATD)
+	addq	#4,B_B_PATD
+	store	r17,(B_B_PATD) 	; store 4 pixels for phrase mode
 
 	movei	#$00C80140,TEMP1 ; 320x200 window
 	movei	#A1_CLIP,TEMP2
 	store	TEMP1,(TEMP2)
 
 	moveq	#0,TEMP1
-	movei	#PITCH1|PIXEL16|WID320|XADDPIX,TEMP2
+	movei	#PITCH2|ZOFFS1|PIXEL16|WID320|XADDPHR,TEMP2
 	
 	store	TEMP1,(B_A1_FPIXEL)
 	store	TEMP2,(B_A1_FLAGS)
@@ -564,7 +576,7 @@ _do_fill_flattop_polygon:
 	store	TEMP1,(B_B_COUNT)
 	move	TEMP1,r12
 	
-	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
+	movei	#CLIP_A1|PATDSEL|DSTEN|DSTENZ|DSTWRZ|ZMODE2|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
 
 .advance_scanline:
@@ -679,7 +691,7 @@ _do_fill_flatbottom_polygon:
 	store	TEMP1,(B_B_COUNT)
 	move	TEMP1,r12
 	
-	movei	#CLIP_A1|PATDSEL|LFU_REPLACE,TEMP1
+	movei	#CLIP_A1|PATDSEL|DSTEN|DSTENZ|DSTWRZ|ZMODE2|LFU_REPLACE,TEMP1
 	store	TEMP1,(B_B_CMD)
 
 .advance_scanline:

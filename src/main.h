@@ -42,8 +42,8 @@ typedef struct shape_list_entry_t {
 } ShapeListEntry;
 
 /* background pixel buffers - 16bpp */
-uint8_t background_frame_0[SCREEN_WIDTH * SCREEN_HEIGHT * 2]; // 320x200x16bpp CRY
-uint8_t background_frame_1[SCREEN_WIDTH * SCREEN_HEIGHT * 2]; // 320x200x16bpp CRY
+uint8_t background_frame_0[SCREEN_WIDTH * SCREEN_HEIGHT * 4]; // 320x200x16bpp CRY
+uint8_t background_frame_1[SCREEN_WIDTH * SCREEN_HEIGHT * 4]; // 320x200x16bpp CRY
 uint8_t *front_buffer;
 uint8_t *back_buffer;
 
